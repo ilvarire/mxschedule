@@ -3,95 +3,102 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\AttendanceLog;
 use App\Models\Exam;
 use App\Models\ExamAllocation;
-use Illuminate\Http\JsonResponse;
+use App\Models\AttendanceLog;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class OfflineSyncController extends Controller
 {
     /**
-     * Download schedule data for offline use.
+     * Download full schedule for an exam for offline use.
      */
-    public function downloadSchedule(Exam $exam): JsonResponse
+    public function downloadSchedule(Exam $exam)
     {
+        $this->authorize('view', $exam);
+
         $allocations = ExamAllocation::whereHas('examSession', fn ($q) => $q->where('exam_id', $exam->id))
-            ->with(['examSession', 'studentProfile.user', 'system', 'hall', 'examPass'])
+            ->with(['studentProfile.user', 'system', 'examSession'])
             ->get()
-            ->map(fn ($a) => [
-                'id' => $a->id,
-                'session_id' => $a->exam_session_id,
-                'session_number' => $a->examSession->session_number,
-                'session_start' => $a->examSession->start_time->timestamp,
-                'session_end' => $a->examSession->end_time->timestamp,
-                'student_name' => $a->studentProfile->user->name,
-                'matric_number' => $a->studentProfile->matric_number,
-                'system_code' => $a->system->system_code,
-                'hall_name' => $a->hall->name,
-                'pass_code' => $a->examPass?->pass_code,
-                'qr_payload' => $a->examPass?->qr_payload,
-            ]);
+            ->map(function ($allocation) {
+                return [
+                    'aid' => $allocation->id, // Allocation ID
+                    'student' => $allocation->studentProfile->user->name,
+                    'matric' => $allocation->studentProfile->matric_number,
+                    'system' => $allocation->system->system_code,
+                    'hall' => $allocation->hall_id, // For display
+                    'session' => $allocation->examSession->session_number,
+                    'start' => $allocation->examSession->start_time->timestamp,
+                    'end' => $allocation->examSession->end_time->timestamp,
+                    'status' => $allocation->seat_status,
+                ];
+            });
 
         return response()->json([
             'exam_id' => $exam->id,
             'course' => $exam->course->code,
-            'date' => $exam->exam_date->toDateString(),
+            'generated_at' => now()->timestamp,
             'allocations' => $allocations,
-            'downloaded_at' => now()->timestamp,
+            // Pre-calculate window for JS logic
+            'entry_window' => (int) config('exam.entry_window', 15),
         ]);
     }
 
     /**
-     * Sync offline attendance records.
+     * Sync attendance logs from offline devices.
      */
-    public function sync(Request $request): JsonResponse
+    public function sync(Request $request)
     {
         $request->validate([
-            'records' => 'required|array',
-            'records.*.allocation_id' => 'required|integer',
-            'records.*.scan_result' => 'required|string',
-            'records.*.scanned_at' => 'required|integer', // timestamp
+            'logs' => 'required|array',
+            'logs.*.aid' => 'required|exists:exam_allocations,id',
+            'logs.*.scanned_at' => 'required|integer',
+            'logs.*.result' => 'required|string',
         ]);
 
-        $accepted = 0;
-        $rejected = 0;
+        $syncedCount = 0;
+        $errors = [];
 
-        foreach ($request->input('records') as $record) {
-            // Check if allocation exists
-            $allocation = ExamAllocation::find($record['allocation_id']);
-            if (! $allocation) {
-                $rejected++;
-                continue;
+        DB::transaction(function () use ($request, &$syncedCount, &$errors) {
+            foreach ($request->logs as $logData) {
+                try {
+                    $allocation = ExamAllocation::find($logData['aid']);
+                    $scannedAt = \Carbon\Carbon::createFromTimestamp($logData['scanned_at']);
+
+                    // 1. Create Attendance Log
+                    AttendanceLog::create([
+                        'exam_allocation_id' => $allocation->id,
+                        'scanned_by' => auth()->id(),
+                        'scan_result' => $logData['result'],
+                        'scanned_at' => $scannedAt,
+                        'synced_from_offline' => true,
+                        'device_info' => $request->header('User-Agent'),
+                        'ip_address' => $request->ip(),
+                    ]);
+
+                    // 2. Update Allocation Status if valid and not already checked in
+                    if ($logData['result'] === 'valid' && $allocation->seat_status !== 'checked_in') {
+                        $allocation->update([
+                            'seat_status' => 'checked_in',
+                            'checked_in_at' => $scannedAt,
+                            'checked_in_by' => auth()->id(),
+                        ]);
+                    }
+
+                    $syncedCount++;
+                } catch (\Exception $e) {
+                    $errors[] = "Allocation #{$logData['aid']}: " . $e->getMessage();
+                    Log::error("Offline sync error: " . $e->getMessage());
+                }
             }
-
-            // Check for duplicate (same allocation + similar timestamp)
-            $exists = AttendanceLog::where('exam_allocation_id', $record['allocation_id'])
-                ->where('scan_result', 'valid')
-                ->exists();
-
-            if ($exists) {
-                $rejected++;
-                continue;
-            }
-
-            AttendanceLog::create([
-                'exam_allocation_id' => $record['allocation_id'],
-                'scanned_by' => $request->user()->id,
-                'scan_result' => $record['scan_result'],
-                'scanned_at' => \Carbon\Carbon::createFromTimestamp($record['scanned_at']),
-                'device_info' => $request->userAgent(),
-                'ip_address' => $request->ip(),
-                'synced_from_offline' => true,
-            ]);
-
-            $accepted++;
-        }
+        });
 
         return response()->json([
-            'accepted' => $accepted,
-            'rejected' => $rejected,
-            'total' => count($request->input('records')),
+            'success' => true,
+            'synced_count' => $syncedCount,
+            'errors' => $errors,
         ]);
     }
 }

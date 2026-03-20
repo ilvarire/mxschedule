@@ -49,27 +49,27 @@ class ReportService
     /**
      * System usage statistics.
      */
-    public function systemUsageReport(): Collection
+    public function systemUsageReport(): array
     {
-        return Hall::with(['systems' => function ($q) {
-            $q->withCount(['examAllocations as total_usage'])
-                ->withCount(['examAllocations as active_allocation_count' => function ($q) {
-                    $q->where('seat_status', '!=', SeatStatus::Reassigned);
-                }]);
-        }])->get()->map(function ($hall) {
-            return [
-                'hall' => $hall->name,
-                'hall_code' => $hall->code,
-                'total_systems' => $hall->systems->count(),
-                'active_systems' => $hall->systems->where('status', \App\Enums\SystemStatus::Active)->count(),
-                'systems' => $hall->systems->map(fn ($s) => [
-                    'code' => $s->system_code,
-                    'status' => $s->status->label(),
-                    'total_usage' => $s->total_usage,
-                    'last_used' => $s->last_used_at?->format('Y-m-d H:i'),
-                ]),
-            ];
-        });
+        $halls = Hall::withCount(['systems', 'systems as active_systems_count' => function ($q) {
+            $q->where('status', \App\Enums\SystemStatus::Active);
+        }])->get();
+
+        $total = System::count();
+        $active = System::where('status', \App\Enums\SystemStatus::Active)->count();
+        $faulty = System::where('status', \App\Enums\SystemStatus::Faulty)->count();
+
+        // Get persistent logs from AuditLog if available, or just mock/sim for now 
+        // In a real app, we'd have a system_status_logs table
+        $recentChanges = []; // Placeholder for now - can be expanded later
+
+        return [
+            'total' => $total,
+            'active' => $active,
+            'faulty' => $faulty,
+            'halls' => $halls,
+            'recent_changes' => $recentChanges
+        ];
     }
 
     /**

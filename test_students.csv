@@ -1,0 +1,3 @@
+name,email,matric_number,department_code,level,courses
+Test Student 1,test1@mxschedule.test,TEST/2026/001,CSE,300,CSE301|PHY101
+Test Student 2,test2@mxschedule.test,TEST/2026/002,CSE,200,PHY101

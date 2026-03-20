@@ -58,6 +58,10 @@
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
                         Reports
                     </a>
+                    <a href="{{ route('admin.import.index') }}" class="sidebar-link {{ request()->routeIs('admin.import.*') ? 'active' : '' }}">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                        Import
+                    </a>
                     @endrole
 
                     @role('super_admin')
@@ -91,8 +95,12 @@
 
             <!-- Main Content -->
             <div class="flex-1 lg:ml-64">
-                <!-- Mobile Header -->
-                <header class="lg:hidden bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-20">
+            <!-- Mobile Header -->
+            <header class="lg:hidden bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-20" x-data="{ mobileMenuOpen: false }">
+                <div class="flex items-center gap-3">
+                    <button @click="mobileMenuOpen = true" class="p-2 -ml-2 text-gray-500 hover:text-indigo-600 lg:hidden">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                    </button>
                     <div class="flex items-center gap-2">
                         <div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">
                             <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -101,10 +109,56 @@
                         </div>
                         <span class="font-bold text-gray-900">MXSchedule</span>
                     </div>
-                    <a href="{{ route('profile') }}" class="text-gray-500 hover:text-gray-700">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    </a>
-                </header>
+                </div>
+
+                {{-- Mobile Side Overlay --}}
+                <template x-if="true">
+                    <div x-show="mobileMenuOpen" 
+                         class="fixed inset-0 z-50 lg:hidden" 
+                         @click.away="mobileMenuOpen = false">
+                        <div class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm" x-show="mobileMenuOpen" x-transition:enter="transition-opacity ease-linear duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition-opacity ease-linear duration-300" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"></div>
+                        
+                        <div class="fixed inset-y-0 left-0 w-64 bg-gray-900 shadow-2xl flex flex-col" x-show="mobileMenuOpen" x-transition:enter="transition ease-in-out duration-300 transform" x-transition:enter-start="-translate-x-full" x-transition:enter-end="translate-x-0" x-transition:leave="transition ease-in-out duration-300 transform" x-transition:leave-start="translate-x-0" x-transition:leave-end="-translate-x-full">
+                            <div class="flex items-center justify-between px-6 py-5 border-b border-white/10">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">
+                                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                                    </div>
+                                    <span class="font-bold text-white text-lg">MXSchedule</span>
+                                </div>
+                                <button @click="mobileMenuOpen = false" class="text-gray-400 hover:text-white">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                </button>
+                            </div>
+                            
+                            {{-- We could extract the nav to a partial but for now we'll just replicate it or use a blade component --}}
+                            <div class="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+                                {{-- Sidebar content simplified for mobile --}}
+                                @role('super_admin|exam_officer|ict_admin')
+                                <a href="{{ route('admin.dashboard') }}" class="sidebar-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">Dashboard</a>
+                                @endrole
+
+                                @role('super_admin|ict_admin')
+                                <p class="px-3 pt-4 pb-1 text-[10px] font-bold text-gray-600 uppercase">Infrastructure</p>
+                                <a href="{{ route('admin.halls.index') }}" class="sidebar-link {{ request()->routeIs('admin.halls.*') ? 'active' : '' }}">Halls</a>
+                                <a href="{{ route('admin.systems.index') }}" class="sidebar-link {{ request()->routeIs('admin.systems.*') ? 'active' : '' }}">Systems</a>
+                                @endrole
+
+                                @role('super_admin|exam_officer')
+                                <p class="px-3 pt-4 pb-1 text-[10px] font-bold text-gray-600 uppercase">Examinations</p>
+                                <a href="{{ route('admin.exams.index') }}" class="sidebar-link {{ request()->routeIs('admin.exams.*') ? 'active' : '' }}">Exams</a>
+                                <a href="{{ route('admin.reports.show', 'attendance') }}" class="sidebar-link {{ request()->routeIs('admin.reports.*') ? 'active' : '' }}">Reports</a>
+                                <a href="{{ route('admin.import.index') }}" class="sidebar-link {{ request()->routeIs('admin.import.*') ? 'active' : '' }}">Import</a>
+                                @endrole
+                            </div>
+                        </div>
+                    </div>
+                </template>
+
+                <a href="{{ route('profile') }}" class="text-gray-500 hover:text-indigo-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                </a>
+            </header>
 
                 <!-- Flash Messages -->
                 <div class="px-4 sm:px-6 lg:px-8 pt-4">

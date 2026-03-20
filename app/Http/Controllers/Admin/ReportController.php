@@ -35,10 +35,14 @@ class ReportController extends Controller
         return match ($type) {
             'attendance' => $request->query('exam_id')
                 ? $service->attendanceReport(Exam::findOrFail($request->query('exam_id')))
-                : [], // empty state — show exam selector only
+                : [],
             'system-usage' => ['usage' => $service->systemUsageReport()],
-            'load-distribution' => ['distribution' => $service->loadDistributionReport(Exam::findOrFail($request->query('exam_id')))],
-            'missed-exams' => ['missed' => $service->missedExamsReport(Exam::findOrFail($request->query('exam_id')))],
+            'load-distribution' => $request->query('exam_id')
+                ? ['distribution' => $service->loadDistributionReport(Exam::findOrFail($request->query('exam_id')))]
+                : [],
+            'missed-exams' => $request->query('exam_id')
+                ? ['missed' => $service->missedExamsReport(Exam::findOrFail($request->query('exam_id')))]
+                : [],
             default => abort(404, 'Unknown report type.'),
         };
     }

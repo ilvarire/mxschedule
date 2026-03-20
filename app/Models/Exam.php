@@ -61,6 +61,22 @@ class Exam extends Model
     }
 
     /**
+     * Scope for upcoming exams.
+     */
+    public function scopeUpcoming($query)
+    {
+        return $query->where('exam_date', '>=', now()->toDateString());
+    }
+
+    /**
+     * Scope for scheduled exams.
+     */
+    public function scopeScheduled($query)
+    {
+        return $query->where('status', ExamStatus::Scheduled);
+    }
+
+    /**
      * Check if the exam can be scheduled.
      */
     public function canBeScheduled(): bool

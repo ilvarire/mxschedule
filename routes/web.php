@@ -62,6 +62,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
             // Users (Super Admin only)
             Route::resource('users', Admin\UserController::class)->middleware('role:super_admin');
+
+            // CSV Import
+            Route::get('/import', [Admin\CsvImportController::class, 'index'])->name('import.index');
+            Route::post('/import', [Admin\CsvImportController::class, 'importStudents'])->name('import.process');
+            Route::get('/import/template/{type}', [Admin\CsvImportController::class, 'downloadTemplate'])->name('import.template');
         });
 
     // ── Invigilator Routes ──────────────────────
@@ -91,9 +96,9 @@ Route::middleware(['auth', 'web'])
         Route::post('/validate-qr', [Api\QrValidationController::class, 'validate'])->name('api.validate-qr');
     });
 
-// ── API Routes (Sanctum token auth for mobile/offline) ──
+// ── API Routes (Offline/Sync) ──
 Route::prefix('api/v1')
-    ->middleware(['auth:sanctum'])
+    ->middleware(['auth', 'role:super_admin|exam_officer|ict_admin|invigilator'])
     ->group(function () {
         Route::post('/offline/sync', [Api\OfflineSyncController::class, 'sync'])->name('api.offline.sync');
         Route::get('/offline/schedule/{exam}', [Api\OfflineSyncController::class, 'downloadSchedule'])->name('api.offline.schedule');
