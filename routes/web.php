@@ -84,11 +84,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
         });
 });
 
-// ── API Routes (Sanctum authenticated) ──────────
+// ── API Routes (Web session auth for scanner) ──
+Route::middleware(['auth', 'web'])
+    ->prefix('api/v1')
+    ->group(function () {
+        Route::post('/validate-qr', [Api\QrValidationController::class, 'validate'])->name('api.validate-qr');
+    });
+
+// ── API Routes (Sanctum token auth for mobile/offline) ──
 Route::prefix('api/v1')
     ->middleware(['auth:sanctum'])
     ->group(function () {
-        Route::post('/validate-qr', [Api\QrValidationController::class, 'validate'])->name('api.validate-qr');
         Route::post('/offline/sync', [Api\OfflineSyncController::class, 'sync'])->name('api.offline.sync');
         Route::get('/offline/schedule/{exam}', [Api\OfflineSyncController::class, 'downloadSchedule'])->name('api.offline.schedule');
     });

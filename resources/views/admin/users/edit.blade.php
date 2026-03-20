@@ -1,0 +1,56 @@
+<x-layouts.app :title="'Edit User'">
+    <x-slot name="header">
+        <div class="flex items-center gap-3">
+            <a href="{{ route('admin.users.index') }}" class="text-gray-400 hover:text-gray-600"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></a>
+            <h1 class="text-2xl font-bold text-gray-900">Edit {{ $user->name }}</h1>
+        </div>
+    </x-slot>
+
+    <div class="max-w-2xl">
+        <div class="card">
+            <div class="card-body">
+                <form action="{{ route('admin.users.update', $user) }}" method="POST" class="space-y-5">
+                    @csrf @method('PUT')
+                    <div>
+                        <label class="form-label">Full Name</label>
+                        <input type="text" name="name" value="{{ old('name', $user->name) }}" class="form-input-styled" required>
+                        @error('name') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="form-label">Email</label>
+                            <input type="email" name="email" value="{{ old('email', $user->email) }}" class="form-input-styled" required>
+                            @error('email') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
+                        </div>
+                        <div>
+                            <label class="form-label">Phone</label>
+                            <input type="text" name="phone" value="{{ old('phone', $user->phone) }}" class="form-input-styled">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="form-label">Role</label>
+                        <select name="role" class="form-input-styled" required>
+                            @foreach($roles as $role)
+                                <option value="{{ $role->name }}" {{ $user->hasRole($role->name) ? 'selected' : '' }}>{{ ucwords(str_replace('_', ' ', $role->name)) }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox" name="is_active" id="is_active" value="1" {{ old('is_active', $user->is_active) ? 'checked' : '' }} class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                        <label for="is_active" class="text-sm text-gray-700">Account is active</label>
+                    </div>
+                    <div class="flex justify-between pt-4">
+                        <form action="{{ route('admin.users.destroy', $user) }}" method="POST" onsubmit="return confirm('Delete this user?')">
+                            @csrf @method('DELETE')
+                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                        </form>
+                        <div class="flex gap-3">
+                            <a href="{{ route('admin.users.index') }}" class="btn btn-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-primary">Save Changes</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</x-layouts.app>

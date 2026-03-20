@@ -33,7 +33,9 @@ class ReportController extends Controller
     protected function getReportData(string $type, Request $request, ReportService $service): array
     {
         return match ($type) {
-            'attendance' => $service->attendanceReport(Exam::findOrFail($request->query('exam_id'))),
+            'attendance' => $request->query('exam_id')
+                ? $service->attendanceReport(Exam::findOrFail($request->query('exam_id')))
+                : [], // empty state — show exam selector only
             'system-usage' => ['usage' => $service->systemUsageReport()],
             'load-distribution' => ['distribution' => $service->loadDistributionReport(Exam::findOrFail($request->query('exam_id')))],
             'missed-exams' => ['missed' => $service->missedExamsReport(Exam::findOrFail($request->query('exam_id')))],
