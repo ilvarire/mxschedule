@@ -70,12 +70,13 @@ class OfflineSyncController extends Controller
                     // 1. Create Attendance Log
                     AttendanceLog::create([
                         'exam_allocation_id' => $allocation->id,
-                        'scanned_by' => auth()->id(),
+                        'scanned_by' => auth()->id() ?? 1, // Fallback if session lost
                         'scan_result' => $logData['result'],
                         'scanned_at' => $scannedAt,
                         'synced_from_offline' => true,
                         'device_info' => $request->header('User-Agent'),
                         'ip_address' => $request->ip(),
+                        'notes' => 'Synced from offline storage',
                     ]);
 
                     // 2. Update Allocation Status if valid and not already checked in
@@ -83,7 +84,7 @@ class OfflineSyncController extends Controller
                         $allocation->update([
                             'seat_status' => 'checked_in',
                             'checked_in_at' => $scannedAt,
-                            'checked_in_by' => auth()->id(),
+                            'checked_in_by' => auth()->id() ?? 1,
                         ]);
                     }
 

@@ -21,7 +21,7 @@ class SchedulingEngine
      *
      * @throws \RuntimeException
      */
-    public function generateSchedule(Exam $exam): void
+    public function generateSchedule(Exam $exam, ?int $userId = null): void
     {
         // ── STEP 1: Validate state ──────────────────────
         if (! $exam->canBeScheduled()) {
@@ -32,8 +32,8 @@ class SchedulingEngine
         $exam->update(['status' => ExamStatus::Scheduling]);
 
         try {
-            DB::transaction(function () use ($exam) {
-                $this->executeScheduling($exam);
+            DB::transaction(function () use ($exam, $userId) {
+                $this->executeScheduling($exam, $userId);
             });
         } catch (\Throwable $e) {
             // Revert status on failure
@@ -45,7 +45,7 @@ class SchedulingEngine
     /**
      * Core scheduling logic inside a transaction.
      */
-    protected function executeScheduling(Exam $exam): void
+    protected function executeScheduling(Exam $exam, ?int $userId = null): void
     {
         // ── STEP 2: Gather inputs ───────────────────────
         $students = $this->getRegisteredStudents($exam);
@@ -126,7 +126,7 @@ class SchedulingEngine
         $exam->update([
             'status' => ExamStatus::Scheduled,
             'scheduled_at' => now(),
-            'scheduled_by' => auth()->id(),
+            'scheduled_by' => $userId ?? auth()->id() ?? 1, // Fallback to system/admin if needed
             'total_registered_students' => $totalStudents,
         ]);
     }
@@ -151,7 +151,7 @@ class SchedulingEngine
     protected function buildTimeSlots(Exam $exam, int $sessionsNeeded): array
     {
         $slots = [];
-        $currentStart = Carbon::parse($exam->exam_date->format('Y-m-d') . ' ' . $exam->start_time);
+        $currentStart = Carbon::parse($exam->exam_date)->startOfDay()->addHours(Carbon::parse($exam->start_time)->hour)->addMinutes(Carbon::parse($exam->start_time)->minute);
 
         for ($i = 0; $i < $sessionsNeeded; $i++) {
             $end = $currentStart->copy()->addMinutes($exam->duration_minutes);

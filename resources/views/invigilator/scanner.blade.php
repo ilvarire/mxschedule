@@ -112,7 +112,9 @@
                     if (!examId) return;
 
                     try {
-                        const resp = await fetch(`/api/v1/offline/schedule/${examId}`);
+                        const resp = await fetch(`/api/v1/offline/schedule/${examId}`, {
+                        headers: { 'Accept': 'application/json' }
+                    });
                         if (!resp.ok) throw new Error("Failed to fetch schedule");
 
                         const data = await resp.json();
@@ -134,6 +136,7 @@
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
+                                'Accept': 'application/json',
                                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                             },
                             body: JSON.stringify({ logs })

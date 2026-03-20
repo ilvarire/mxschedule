@@ -17,18 +17,21 @@ class GenerateExamScheduleJob implements ShouldQueue
 
     public int $tries = 1;
     public int $timeout = 600;
+    public ?int $userId = null;
 
     public function __construct(
         public Exam $exam,
+        ?int $userId = null,
     ) {
+        $this->userId = $userId ?? auth()->id() ?? 1;
         $this->onQueue('scheduling');
     }
 
     public function handle(SchedulingEngine $engine): void
     {
-        Log::info("Generating schedule for Exam #{$this->exam->id}");
+        Log::info("Generating schedule for Exam #{$this->exam->id} requested by User #{$this->userId}");
 
-        $engine->generateSchedule($this->exam);
+        $engine->generateSchedule($this->exam, $this->userId);
 
         Log::info("Schedule generated for Exam #{$this->exam->id}");
 

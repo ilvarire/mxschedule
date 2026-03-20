@@ -20,7 +20,7 @@ class ScheduleController extends Controller
             return back()->with('error', 'No active systems available. Please configure systems first.');
         }
 
-        GenerateExamScheduleJob::dispatch($exam);
+        GenerateExamScheduleJob::dispatch($exam, auth()->id());
 
         return back()->with('success', 'Schedule generation started. This may take a moment.');
     }
