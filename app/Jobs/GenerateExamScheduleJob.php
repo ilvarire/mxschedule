@@ -11,6 +11,9 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
+// SendScheduleNotificationsJob is dispatched by SchedulingEngine::executeScheduling().
+// Do not import or re-dispatch it here to avoid duplicate student notifications.
+
 class GenerateExamScheduleJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
@@ -35,13 +38,15 @@ class GenerateExamScheduleJob implements ShouldQueue
 
         Log::info("Schedule generated for Exam #{$this->exam->id}");
 
-        // Dispatch follow-up jobs
+        // Dispatch PDF generation.
+        // Note: SendScheduleNotificationsJob is already dispatched inside SchedulingEngine::executeScheduling()
+        // at step 9. Do NOT dispatch it again here to avoid duplicate student notifications.
         GenerateExamPassPdfJob::dispatch($this->exam);
-        SendScheduleNotificationsJob::dispatch($this->exam);
     }
 
     public function failed(\Throwable $exception): void
     {
         Log::error("Schedule generation failed for Exam #{$this->exam->id}: {$exception->getMessage()}");
+        $this->exam->update(['status' => \App\Enums\ExamStatus::Draft]);
     }
 }

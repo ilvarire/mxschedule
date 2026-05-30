@@ -48,6 +48,14 @@
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
                         View Allocations
                     </a>
+                    <form action="{{ route('admin.exams.notify', $exam) }}" method="POST"
+                          onsubmit="return confirm('This will send email notifications to all {{ $exam->total_registered_students }} allocated students. Continue?')">
+                        @csrf
+                        <button type="submit" class="btn btn-secondary w-full">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                            Resend Notifications
+                        </button>
+                    </form>
                     <form action="{{ route('admin.exams.reschedule', $exam) }}" method="POST" onsubmit="return confirm('This will clear all current allocations and passes. Continue?')">
                         @csrf
                         <button type="submit" class="btn btn-danger w-full">Re-schedule</button>

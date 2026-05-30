@@ -21,6 +21,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         if ($user->hasRole('invigilator')) {
             return redirect()->route('invigilator.scanner');
         }
+        // Fallback for users registered before the role assignment fix
+        if ($user->roles()->count() === 0) {
+            $user->assignRole('student');
+        }
+
         if ($user->hasRole('student')) {
             return redirect()->route('student.dashboard');
         }
@@ -47,11 +52,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::patch('/systems/{system}/status', [Admin\SystemController::class, 'updateStatus'])->name('systems.update-status');
             Route::get('/systems', [Admin\SystemController::class, 'index'])->name('systems.index');
 
-            // Exams
+            // Exams & Courses
+            Route::resource('courses', Admin\CourseController::class);
             Route::resource('exams', Admin\ExamController::class);
             Route::post('/exams/{exam}/schedule', [Admin\ScheduleController::class, 'generate'])->name('exams.schedule');
             Route::post('/exams/{exam}/reschedule', [Admin\ScheduleController::class, 'reschedule'])->name('exams.reschedule');
             Route::get('/exams/{exam}/allocations', [Admin\ScheduleController::class, 'allocations'])->name('exams.allocations');
+            Route::get('/monitoring', fn () => view('admin.monitoring'))->name('monitoring');
+            // Manual notification resend
+            Route::post('/exams/{exam}/notify', [Admin\ScheduleController::class, 'notify'])->name('exams.notify');
 
             // Reallocation
             Route::post('/reallocate', [Admin\ReallocationController::class, 'reassign'])->name('reallocate');
@@ -83,14 +92,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('student.')
         ->middleware(['role:super_admin|student'])
         ->group(function () {
-            Route::get('/dashboard', [Student\DashboardController::class, 'index'])->name('dashboard');
+        Route::get('/dashboard', [Student\DashboardController::class, 'index'])->name('dashboard');
             Route::get('/exam-pass/{allocation}', [Student\ExamPassController::class, 'show'])->name('exam-pass.show');
             Route::get('/exam-pass/{allocation}/download', [Student\ExamPassController::class, 'download'])->name('exam-pass.download');
+            // Notifications
+            Route::get('/notifications', [Student\NotificationsController::class, 'index'])->name('notifications.index');
+            Route::post('/notifications/{id}/read', [Student\NotificationsController::class, 'markRead'])->name('notifications.read');
+            Route::post('/notifications/read-all', [Student\NotificationsController::class, 'markAllRead'])->name('notifications.read-all');
+            Route::delete('/notifications/{id}', [Student\NotificationsController::class, 'destroy'])->name('notifications.destroy');
         });
 });
 
 // ── API Routes (Web session auth for scanner) ──
-Route::middleware(['auth', 'web'])
+Route::middleware(['auth', 'web', 'throttle:30,1'])
     ->prefix('api/v1')
     ->group(function () {
         Route::post('/validate-qr', [Api\QrValidationController::class, 'validate'])->name('api.validate-qr');
@@ -98,8 +112,9 @@ Route::middleware(['auth', 'web'])
 
 // ── API Routes (Offline/Sync) ──
 Route::prefix('api/v1')
-    ->middleware(['auth', 'role:super_admin|exam_officer|ict_admin|invigilator'])
+    ->middleware(['auth', 'role:super_admin|exam_officer|ict_admin|invigilator', 'throttle:10,1'])
     ->group(function () {
+        Route::get('/offline/keys', [Api\OfflineSyncController::class, 'getPublicKey'])->name('api.offline.keys');
         Route::post('/offline/sync', [Api\OfflineSyncController::class, 'sync'])->name('api.offline.sync');
         Route::get('/offline/schedule/{exam}', [Api\OfflineSyncController::class, 'downloadSchedule'])->name('api.offline.schedule');
     });

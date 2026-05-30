@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\ExamStatus;
 use App\Enums\SeatStatus;
 use App\Enums\SystemStatus;
+use App\Jobs\SendScheduleNotificationsJob;
 use App\Models\Exam;
 use App\Models\ExamAllocation;
 use App\Models\ExamSession;
@@ -49,7 +50,7 @@ class SchedulingEngine
     {
         // ── STEP 2: Gather inputs ───────────────────────
         $students = $this->getRegisteredStudents($exam);
-        $activeSystems = System::available()->get();
+        $activeSystems = System::available()->lockForUpdate()->skipLocked()->get();
 
         $totalStudents = $students->count();
         $totalSystems = $activeSystems->count();
@@ -126,9 +127,12 @@ class SchedulingEngine
         $exam->update([
             'status' => ExamStatus::Scheduled,
             'scheduled_at' => now(),
-            'scheduled_by' => $userId ?? auth()->id() ?? 1, // Fallback to system/admin if needed
+            'scheduled_by' => $userId ?? auth()->id() ?? 1,
             'total_registered_students' => $totalStudents,
         ]);
+
+        // ── STEP 9: Dispatch student notifications ──────
+        SendScheduleNotificationsJob::dispatch($exam)->onQueue('notifications');
     }
 
     /**
@@ -153,8 +157,19 @@ class SchedulingEngine
         $slots = [];
         $currentStart = Carbon::parse($exam->exam_date)->startOfDay()->addHours(Carbon::parse($exam->start_time)->hour)->addMinutes(Carbon::parse($exam->start_time)->minute);
 
+        $operatingHourEnd = 18; // 6 PM
+        $operatingHourStart = 8; // 8 AM
+
         for ($i = 0; $i < $sessionsNeeded; $i++) {
             $end = $currentStart->copy()->addMinutes($exam->duration_minutes);
+
+            // Check if session exceeds operating hours
+            if ($end->hour >= $operatingHourEnd && !($end->hour === $operatingHourEnd && $end->minute === 0)) {
+                // Move to next day at starting hour
+                $currentStart->addDay()->startOfDay()->addHours($operatingHourStart);
+                $end = $currentStart->copy()->addMinutes($exam->duration_minutes);
+            }
+
             $slots[] = [
                 'start' => $currentStart->copy(),
                 'end' => $end,

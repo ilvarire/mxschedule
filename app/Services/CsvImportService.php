@@ -205,6 +205,9 @@ class CsvImportService
 
         while (($data = fgetcsv($handle)) !== false) {
             if (count($data) === count($headers)) {
+                // Strip leading formula injection characters
+                $data = array_map(fn ($val) => ltrim($val, "=+-@ \t\n\r\0\x0B"), $data);
+                
                 $rows->push(array_combine($headers, $data));
             }
         }

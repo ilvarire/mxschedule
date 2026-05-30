@@ -67,23 +67,33 @@ class ExamPassService
      */
     protected function buildQrPayload(ExamAllocation $allocation, string $passCode): string
     {
-        $signingKey = Setting::getValue('qr_signing_key');
-
+        $now = time();
         $data = [
+            'iss' => config('app.url'),
+            'aud' => 'invigilator-app',
+            'sub' => (string) $allocation->student_profile_id,
+            'iat' => $now,
+            'nbf' => $now,
+            'exp' => $allocation->examSession->end_time->timestamp,
+            'jti' => $passCode,
+            
+            // Custom claims
             'aid' => $allocation->id,
             'sid' => $allocation->student_profile_id,
             'pid' => $passCode,
             'ses' => $allocation->exam_session_id,
-            'exp' => $allocation->examSession->end_time->timestamp,
         ];
 
-        // Generate HMAC-SHA256 signature
-        $dataJson = json_encode($data);
-        $signature = hash_hmac('sha256', $dataJson, $signingKey);
+        $privateKeyPath = storage_path('app/keys/exam_private.pem');
 
-        $data['sig'] = $signature;
-
-        return json_encode($data);
+        if (file_exists($privateKeyPath)) {
+            $privateKey = file_get_contents($privateKeyPath);
+            return \Firebase\JWT\JWT::encode($data, $privateKey, 'RS256');
+        } else {
+            // Fallback to HMAC if RSA keys are not set up (for local dev)
+            $signingKey = Setting::getValue('qr_signing_key') ?? 'default_dev_key';
+            return \Firebase\JWT\JWT::encode($data, $signingKey, 'HS256');
+        }
     }
 
     /**
@@ -121,15 +131,9 @@ class ExamPassService
         $pdf->setPaper([0, 0, 297.64, 420.94], 'portrait');
 
         $filename = "exam-passes/{$allocation->id}_{$pass->pass_code}.pdf";
-        $path = storage_path("app/public/{$filename}");
 
-        // Ensure directory exists
-        $dir = dirname($path);
-        if (! is_dir($dir)) {
-            mkdir($dir, 0755, true);
-        }
-
-        file_put_contents($path, $pdf->output());
+        // Store via the Storage abstraction so cloud drivers (S3 etc.) work transparently.
+        Storage::disk('public')->put($filename, $pdf->output());
 
         $pass->update(['pdf_path' => $filename]);
 

@@ -26,11 +26,11 @@ class ReallocationService
      */
     public function reassignFromSystem(System $faultySystem): Collection
     {
-        // Find active allocations on this system (future sessions only)
+        // Find active allocations on this system (future or ongoing sessions only)
         $affectedAllocations = ExamAllocation::where('system_id', $faultySystem->id)
             ->where('seat_status', SeatStatus::Allocated)
             ->whereHas('examSession', function ($q) {
-                $q->where('start_time', '>', now());
+                $q->where('end_time', '>', now());
             })
             ->with(['examSession', 'studentProfile'])
             ->get();
@@ -39,8 +39,9 @@ class ReallocationService
             return collect();
         }
 
-        return DB::transaction(function () use ($affectedAllocations, $faultySystem) {
-            $newAllocations = collect();
+        return \Illuminate\Support\Facades\Cache::lock("reallocate_system_{$faultySystem->id}", 10)->get(function () use ($affectedAllocations, $faultySystem) {
+            return DB::transaction(function () use ($affectedAllocations, $faultySystem) {
+                $newAllocations = collect();
 
             foreach ($affectedAllocations as $old) {
                 // Find a replacement system
@@ -76,6 +77,7 @@ class ReallocationService
             }
 
             return $newAllocations;
+            });
         });
     }
 
@@ -84,25 +86,27 @@ class ReallocationService
      */
     public function reassignStudent(ExamAllocation $oldAllocation, System $newSystem): ExamAllocation
     {
-        return DB::transaction(function () use ($oldAllocation, $newSystem) {
-            // Create new allocation
-            $new = ExamAllocation::create([
-                'exam_session_id' => $oldAllocation->exam_session_id,
-                'student_profile_id' => $oldAllocation->student_profile_id,
-                'system_id' => $newSystem->id,
-                'hall_id' => $newSystem->hall_id,
-                'seat_status' => SeatStatus::Allocated,
-                'reassigned_from_id' => $oldAllocation->id,
-            ]);
+        return \Illuminate\Support\Facades\Cache::lock("reallocate_student_{$oldAllocation->id}", 10)->get(function () use ($oldAllocation, $newSystem) {
+            return DB::transaction(function () use ($oldAllocation, $newSystem) {
+                // Create new allocation
+                $new = ExamAllocation::create([
+                    'exam_session_id' => $oldAllocation->exam_session_id,
+                    'student_profile_id' => $oldAllocation->student_profile_id,
+                    'system_id' => $newSystem->id,
+                    'hall_id' => $newSystem->hall_id,
+                    'seat_status' => SeatStatus::Allocated,
+                    'reassigned_from_id' => $oldAllocation->id,
+                ]);
 
-            // Mark old allocation
-            $oldAllocation->update(['seat_status' => SeatStatus::Reassigned]);
+                // Mark old allocation
+                $oldAllocation->update(['seat_status' => SeatStatus::Reassigned]);
 
-            // Regenerate pass
-            $oldAllocation->examPass?->delete();
-            $this->passService->generateForAllocation($new);
+                // Regenerate pass
+                $oldAllocation->examPass?->delete();
+                $this->passService->generateForAllocation($new);
 
-            return $new;
+                return $new;
+            });
         });
     }
 

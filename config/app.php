@@ -123,4 +123,15 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Allowed Email Domain
+    |--------------------------------------------------------------------------
+    |
+    | Restricts student registration to a specific university email domain.
+    |
+    */
+
+    'allowed_email_domain' => env('ALLOWED_EMAIL_DOMAIN', '@mxschedule.test'),
+
 ];

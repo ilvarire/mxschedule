@@ -10,6 +10,7 @@ use App\Models\ExamAllocation;
 use App\Models\ExamSession;
 use App\Models\Hall;
 use App\Models\System;
+use App\Models\SystemStatusLog;
 use Illuminate\Support\Collection;
 
 class ReportService
@@ -59,16 +60,18 @@ class ReportService
         $active = System::where('status', \App\Enums\SystemStatus::Active)->count();
         $faulty = System::where('status', \App\Enums\SystemStatus::Faulty)->count();
 
-        // Get persistent logs from AuditLog if available, or just mock/sim for now 
-        // In a real app, we'd have a system_status_logs table
-        $recentChanges = []; // Placeholder for now - can be expanded later
+        // Fetch the 50 most recent system status changes with context
+        $recentChanges = SystemStatusLog::with(['system.hall', 'changedByUser'])
+            ->latest()
+            ->limit(50)
+            ->get();
 
         return [
-            'total' => $total,
-            'active' => $active,
-            'faulty' => $faulty,
-            'halls' => $halls,
-            'recent_changes' => $recentChanges
+            'total'          => $total,
+            'active'         => $active,
+            'faulty'         => $faulty,
+            'halls'          => $halls,
+            'recent_changes' => $recentChanges,
         ];
     }
 

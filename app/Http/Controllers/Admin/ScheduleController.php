@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\GenerateExamScheduleJob;
+use App\Jobs\SendScheduleNotificationsJob;
 use App\Models\Exam;
 use App\Models\ExamAllocation;
 use App\Models\System;
@@ -36,6 +37,19 @@ class ScheduleController extends Controller
         GenerateExamScheduleJob::dispatch($exam);
 
         return back()->with('success', 'Re-scheduling started. Previous allocations have been cleared.');
+    }
+
+    public function notify(Exam $exam)
+    {
+        $this->authorize('schedule', $exam);
+
+        if ($exam->status->value !== 'scheduled') {
+            return back()->with('error', 'Can only send notifications for a fully scheduled exam.');
+        }
+
+        SendScheduleNotificationsJob::dispatch($exam)->onQueue('notifications');
+
+        return back()->with('success', 'Notifications are being sent to all allocated students.');
     }
 
     public function allocations(Exam $exam)

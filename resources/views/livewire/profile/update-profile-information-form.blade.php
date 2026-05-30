@@ -82,7 +82,7 @@ new class extends Component
 
         <div>
             <x-input-label for="email" :value="__('Email')" />
-            <x-text-input wire:model="email" id="email" name="email" type="email" class="mt-1 block w-full" required autocomplete="username" />
+            <x-text-input wire:model="email" id="email" name="email" type="email" class="mt-1 block w-full bg-gray-100 cursor-not-allowed text-gray-500" required autocomplete="username" readonly title="Your email address cannot be changed." />
             <x-input-error class="mt-2" :messages="$errors->get('email')" />
 
             @if (auth()->user() instanceof \Illuminate\Contracts\Auth\MustVerifyEmail && ! auth()->user()->hasVerifiedEmail())
@@ -103,6 +103,28 @@ new class extends Component
                 </div>
             @endif
         </div>
+
+        @if(auth()->user()->studentProfile)
+            <div class="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <h3 class="text-sm font-semibold text-gray-900 mb-4">Academic Details (Read-only)</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <span class="block text-xs font-medium text-gray-500 uppercase">Matric Number</span>
+                        <span class="block text-sm text-gray-900 mt-1 font-mono">{{ auth()->user()->studentProfile->matric_number }}</span>
+                    </div>
+                    <div>
+                        <span class="block text-xs font-medium text-gray-500 uppercase">Department</span>
+                        <span class="block text-sm text-gray-900 mt-1">{{ auth()->user()->studentProfile->department->name ?? 'N/A' }}</span>
+                    </div>
+                    <div>
+                        <span class="block text-xs font-medium text-gray-500 uppercase">Level</span>
+                        <span class="block text-sm text-gray-900 mt-1">{{ auth()->user()->studentProfile->level }}</span>
+                    </div>
+                </div>
+                <p class="mt-3 text-xs text-gray-500">These details are managed by the academic office. Contact support to request changes.</p>
+            </div>
+        @endif
+
 
         <div class="flex items-center gap-4">
             <x-primary-button>{{ __('Save') }}</x-primary-button>

@@ -27,11 +27,7 @@ class QrValidationService
         $data = $this->decodePayload($qrPayload);
 
         if (! $data) {
-            return $this->result(ScanResult::InvalidPass, 'Invalid QR code format.');
-        }
-
-        if (! $this->verifySignature($data)) {
-            return $this->result(ScanResult::InvalidPass, 'QR code signature verification failed.');
+            return $this->result(ScanResult::InvalidPass, 'QR code is invalid or signature verification failed.');
         }
 
         // Step 2: Find the pass
@@ -113,15 +109,26 @@ class QrValidationService
     }
 
     /**
-     * Decode the QR payload JSON.
+     * Decode and verify the JWT QR payload.
      */
     protected function decodePayload(string $payload): ?array
     {
         try {
-            $data = json_decode($payload, true, 512, JSON_THROW_ON_ERROR);
+            $publicKeyPath = storage_path('app/keys/exam_public.pem');
 
-            // Validate required fields
-            $required = ['aid', 'sid', 'pid', 'ses', 'exp', 'sig'];
+            if (file_exists($publicKeyPath)) {
+                $key = file_get_contents($publicKeyPath);
+                $keyObj = new \Firebase\JWT\Key($key, 'RS256');
+            } else {
+                $key = Setting::getValue('qr_signing_key') ?? 'default_dev_key';
+                $keyObj = new \Firebase\JWT\Key($key, 'HS256');
+            }
+
+            $decoded = \Firebase\JWT\JWT::decode($payload, $keyObj);
+            $data = (array) $decoded;
+
+            // Validate required custom fields
+            $required = ['aid', 'sid', 'pid', 'ses'];
             foreach ($required as $field) {
                 if (! isset($data[$field])) {
                     return null;
@@ -129,36 +136,10 @@ class QrValidationService
             }
 
             return $data;
-        } catch (\JsonException $e) {
-            Log::warning('QR decode failed', ['error' => $e->getMessage()]);
+        } catch (\Exception $e) {
+            Log::warning('QR decode/verify failed', ['error' => $e->getMessage()]);
             return null;
         }
-    }
-
-    /**
-     * Verify the HMAC-SHA256 signature of the QR payload.
-     */
-    protected function verifySignature(array $data): bool
-    {
-        $signingKey = Setting::getValue('qr_signing_key');
-
-        if (! $signingKey) {
-            Log::error('QR signing key not configured.');
-            return false;
-        }
-
-        // Rebuild the payload string (all fields except 'sig')
-        $payload = json_encode([
-            'aid' => $data['aid'],
-            'sid' => $data['sid'],
-            'pid' => $data['pid'],
-            'ses' => $data['ses'],
-            'exp' => $data['exp'],
-        ]);
-
-        $expectedSig = hash_hmac('sha256', $payload, $signingKey);
-
-        return hash_equals($expectedSig, $data['sig']);
     }
 
     /**
