@@ -68,6 +68,10 @@ class HallController extends Controller
 
     public function destroy(Hall $hall)
     {
+        if ($hall->systems()->whereHas('examAllocations')->exists()) {
+            return back()->with('error', 'Cannot delete a hall that has exam allocation history.');
+        }
+
         $hall->delete();
 
         return redirect()->route('admin.halls.index')

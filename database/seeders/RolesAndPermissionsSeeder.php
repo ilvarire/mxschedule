@@ -95,6 +95,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'toggle_system_status',
             'view_all_allocations',
             'view_dashboard',
+            'view_attendance',
         ]);
 
         // Invigilator

@@ -13,10 +13,17 @@ class EnsureUserIsActive
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if ($request->user() && ! $request->user()->is_active) {
+        if ($request->user() && $request->user()->is_active === false) {
             auth()->logout();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
+
+            if ($request->hasSession()) {
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+            }
+
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Your account has been deactivated.'], 403);
+            }
 
             return redirect()->route('login')
                 ->withErrors(['email' => 'Your account has been deactivated. Please contact the administrator.']);

@@ -8,12 +8,16 @@ use App\Models\AttendanceLog;
 use App\Models\ExamAllocation;
 use App\Models\ExamPass;
 use App\Models\Setting;
+use Carbon\Carbon;
+use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class QrValidationService
 {
     /**
-     * Validate a scanned QR code and process check-in.
+     * Validate a live scan and process check-in.
      *
      * @return array{valid: bool, result: ScanResult, message: string, allocation: ?ExamAllocation}
      */
@@ -23,113 +27,129 @@ class QrValidationService
         ?string $deviceInfo = null,
         ?string $ipAddress = null,
     ): array {
-        // Step 1: Decode and verify signature
-        $data = $this->decodePayload($qrPayload);
+        return DB::transaction(function () use ($qrPayload, $scannedByUserId, $deviceInfo, $ipAddress) {
+            return $this->processVerifiedScan(
+                $qrPayload,
+                now(),
+                $scannedByUserId,
+                $deviceInfo,
+                $ipAddress,
+            );
+        });
+    }
+
+    /**
+     * Reconcile an offline scan using the signed QR payload and device scan time.
+     *
+     * @return array{valid: bool, result: ScanResult, message: string, allocation: ?ExamAllocation}
+     */
+    public function reconcileOfflineScan(
+        string $qrPayload,
+        Carbon $scannedAt,
+        int $scannedByUserId,
+        ?string $deviceInfo = null,
+        ?string $ipAddress = null,
+    ): array {
+        return DB::transaction(function () use ($qrPayload, $scannedAt, $scannedByUserId, $deviceInfo, $ipAddress) {
+            return $this->processVerifiedScan(
+                $qrPayload,
+                $scannedAt,
+                $scannedByUserId,
+                $deviceInfo,
+                $ipAddress,
+                true,
+            );
+        });
+    }
+
+    protected function processVerifiedScan(
+        string $qrPayload,
+        Carbon $scannedAt,
+        int $scannedByUserId,
+        ?string $deviceInfo,
+        ?string $ipAddress,
+        bool $syncedFromOffline = false,
+    ): array {
+        $data = $this->decodePayload($qrPayload, $scannedAt->timestamp);
 
         if (! $data) {
             return $this->result(ScanResult::InvalidPass, 'QR code is invalid or signature verification failed.');
         }
 
-        // Step 2: Find the pass
-        $pass = ExamPass::where('pass_code', $data['pid'])->first();
-
+        $pass = ExamPass::where('pass_code', $data['pid'])->lockForUpdate()->first();
         if (! $pass) {
             return $this->result(ScanResult::InvalidPass, 'Exam pass not found.');
         }
 
-        // Step 3: Check if expired
-        if ($pass->expires_at->isPast()) {
-            $this->logAttempt($pass->exam_allocation_id, $scannedByUserId, ScanResult::Expired, $deviceInfo, $ipAddress);
-            return $this->result(ScanResult::Expired, 'This exam pass has expired.');
+        $allocation = $pass->allocation()->with('examSession')->lockForUpdate()->first();
+        if (! $allocation || ! $this->claimsMatchAllocation($data, $allocation)) {
+            return $this->result(ScanResult::InvalidPass, 'Exam pass claims do not match the allocation.');
         }
 
-        // Step 4: Check for duplicate use
-        if ($pass->is_used) {
-            $this->logAttempt($pass->exam_allocation_id, $scannedByUserId, ScanResult::Duplicate, $deviceInfo, $ipAddress);
-            return $this->result(ScanResult::Duplicate, "Pass already used at {$pass->used_at->format('H:i:s')}.");
+        if ($scannedAt->isAfter($pass->expires_at)) {
+            return $this->loggedResult($allocation->id, $scannedByUserId, ScanResult::Expired, 'This exam pass has expired.', $scannedAt, $deviceInfo, $ipAddress, $syncedFromOffline);
         }
 
-        // Step 5: Load allocation with session
-        $allocation = $pass->allocation()->with('examSession')->first();
-
-        if (! $allocation) {
-            return $this->result(ScanResult::InvalidPass, 'Allocation record not found.');
+        if ($pass->is_used || $allocation->seat_status === SeatStatus::CheckedIn) {
+            $usedAt = $pass->used_at?->format('H:i:s') ?? $allocation->checked_in_at?->format('H:i:s') ?? 'an earlier time';
+            return $this->loggedResult($allocation->id, $scannedByUserId, ScanResult::Duplicate, "Pass already used at {$usedAt}.", $scannedAt, $deviceInfo, $ipAddress, $syncedFromOffline);
         }
 
-        // Step 6: Check time window
         $session = $allocation->examSession;
         $windowMinutes = (int) Setting::getValue('entry_window_minutes', 15);
-
-        $now = now();
         $windowStart = $session->start_time->copy()->subMinutes($windowMinutes);
         $windowEnd = $session->end_time->copy()->addMinutes($windowMinutes);
 
-        if ($now->isBefore($windowStart)) {
-            $this->logAttempt($allocation->id, $scannedByUserId, ScanResult::Early, $deviceInfo, $ipAddress);
-            return $this->result(ScanResult::Early, "Too early. Entry opens at {$windowStart->format('H:i')}.");
+        if ($scannedAt->isBefore($windowStart)) {
+            return $this->loggedResult($allocation->id, $scannedByUserId, ScanResult::Early, "Too early. Entry opens at {$windowStart->format('H:i')}.", $scannedAt, $deviceInfo, $ipAddress, $syncedFromOffline);
         }
 
-        if ($now->isAfter($windowEnd)) {
-            $this->logAttempt($allocation->id, $scannedByUserId, ScanResult::Late, $deviceInfo, $ipAddress);
-            return $this->result(ScanResult::Late, 'Entry window has passed.');
+        if ($scannedAt->isAfter($windowEnd)) {
+            return $this->loggedResult($allocation->id, $scannedByUserId, ScanResult::Late, 'Entry window has passed.', $scannedAt, $deviceInfo, $ipAddress, $syncedFromOffline);
         }
 
-        // Step 7: Check correct session (time slot matching)
-        if ($allocation->exam_session_id !== (int) $data['ses']) {
-            $this->logAttempt($allocation->id, $scannedByUserId, ScanResult::WrongSlot, $deviceInfo, $ipAddress);
-            return $this->result(
-                ScanResult::WrongSlot,
-                "Wrong session. Your session starts at {$session->start_time->format('H:i')}."
-            );
-        }
-
-        // ── ALL CHECKS PASSED — Process Check-In ────────
-
-        // Mark pass as used
-        $pass->markAsUsed();
-
-        // Update allocation status
+        $pass->update(['is_used' => true, 'used_at' => $scannedAt]);
         $allocation->update([
             'seat_status' => SeatStatus::CheckedIn,
-            'checked_in_at' => now(),
+            'checked_in_at' => $scannedAt,
             'checked_in_by' => $scannedByUserId,
         ]);
+        $allocation->system()->update(['last_used_at' => $scannedAt]);
 
-        // Log valid scan
-        $this->logAttempt($allocation->id, $scannedByUserId, ScanResult::Valid, $deviceInfo, $ipAddress);
-
-        // Reload with student info for response
+        $this->logAttempt($allocation->id, $scannedByUserId, ScanResult::Valid, $scannedAt, $deviceInfo, $ipAddress, $syncedFromOffline);
         $allocation->load('studentProfile.user', 'system', 'hall');
 
-        return $this->result(
-            ScanResult::Valid,
-            'Entry confirmed.',
-            $allocation,
-        );
+        return $this->result(ScanResult::Valid, 'Entry confirmed.', $allocation);
     }
 
-    /**
-     * Decode and verify the JWT QR payload.
-     */
-    protected function decodePayload(string $payload): ?array
+    protected function claimsMatchAllocation(array $data, ExamAllocation $allocation): bool
     {
+        return (int) $data['aid'] === $allocation->id
+            && (int) $data['sid'] === $allocation->student_profile_id
+            && (int) $data['ses'] === $allocation->exam_session_id;
+    }
+
+    protected function decodePayload(string $payload, ?int $verificationTime = null): ?array
+    {
+        $originalTimestamp = JWT::$timestamp;
+
         try {
+            JWT::$timestamp = $verificationTime;
             $publicKeyPath = storage_path('app/keys/exam_public.pem');
 
             if (file_exists($publicKeyPath)) {
-                $key = file_get_contents($publicKeyPath);
-                $keyObj = new \Firebase\JWT\Key($key, 'RS256');
+                $key = new Key(file_get_contents($publicKeyPath), 'RS256');
             } else {
-                $key = Setting::getValue('qr_signing_key') ?? 'default_dev_key';
-                $keyObj = new \Firebase\JWT\Key($key, 'HS256');
+                $signingKey = Setting::getValue('qr_signing_key') ?: config('app.key');
+                if (! $signingKey) {
+                    throw new \RuntimeException('QR signing key is not configured.');
+                }
+                $key = new Key($signingKey, 'HS256');
             }
 
-            $decoded = \Firebase\JWT\JWT::decode($payload, $keyObj);
-            $data = (array) $decoded;
+            $data = (array) JWT::decode($payload, $key);
 
-            // Validate required custom fields
-            $required = ['aid', 'sid', 'pid', 'ses'];
-            foreach ($required as $field) {
+            foreach (['aid', 'sid', 'pid', 'ses'] as $field) {
                 if (! isset($data[$field])) {
                     return null;
                 }
@@ -139,12 +159,26 @@ class QrValidationService
         } catch (\Exception $e) {
             Log::warning('QR decode/verify failed', ['error' => $e->getMessage()]);
             return null;
+        } finally {
+            JWT::$timestamp = $originalTimestamp;
         }
     }
 
-    /**
-     * Create a result array.
-     */
+    protected function loggedResult(
+        int $allocationId,
+        int $scannedBy,
+        ScanResult $result,
+        string $message,
+        Carbon $scannedAt,
+        ?string $deviceInfo,
+        ?string $ipAddress,
+        bool $syncedFromOffline,
+    ): array {
+        $this->logAttempt($allocationId, $scannedBy, $result, $scannedAt, $deviceInfo, $ipAddress, $syncedFromOffline);
+
+        return $this->result($result, $message);
+    }
+
     protected function result(ScanResult $result, string $message, ?ExamAllocation $allocation = null): array
     {
         return [
@@ -155,22 +189,20 @@ class QrValidationService
         ];
     }
 
-    /**
-     * Log an attendance attempt.
-     */
     protected function logAttempt(
         int $allocationId,
         int $scannedBy,
         ScanResult $result,
+        Carbon $scannedAt,
         ?string $deviceInfo,
         ?string $ipAddress,
-        bool $syncedFromOffline = false,
+        bool $syncedFromOffline,
     ): void {
         AttendanceLog::create([
             'exam_allocation_id' => $allocationId,
             'scanned_by' => $scannedBy,
             'scan_result' => $result,
-            'scanned_at' => now(),
+            'scanned_at' => $scannedAt,
             'device_info' => $deviceInfo,
             'ip_address' => $ipAddress,
             'synced_from_offline' => $syncedFromOffline,

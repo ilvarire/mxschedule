@@ -144,7 +144,7 @@
                             </div>
                             <p class="text-xs text-gray-500 line-clamp-1 mb-2">{{ $log->reason ?? 'No reason provided' }}</p>
                             <div class="flex items-center justify-between text-[10px] text-gray-400">
-                                <span>By {{ $log->user->name ?? 'System' }}</span>
+                                <span>By {{ $log->changedByUser->name ?? 'System' }}</span>
                                 <span>{{ $log->created_at->diffForHumans() }}</span>
                             </div>
                         </div>

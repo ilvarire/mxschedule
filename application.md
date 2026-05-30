@@ -45,7 +45,7 @@ Handles fault tolerance mid-exam.
 
 ## 5. Technologies, Frameworks, and Tools
 
-- **Backend Framework**: Laravel 11 (PHP 8.2+)
+- **Backend Framework**: Laravel 13 (PHP 8.3+)
 - **Database**: MySQL/PostgreSQL (leveraging Eloquent ORM and pessimistic locking).
 - **Authentication & Authorization**: Laravel Breeze with Spatie Laravel-Permission for strict Role-Based Access Control (RBAC).
 - **Frontend Stack**: Laravel Blade templating combined with Livewire/Vue.js for reactive, dynamic administrative dashboards. Tailwind CSS for UI styling.

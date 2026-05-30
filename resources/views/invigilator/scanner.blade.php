@@ -97,6 +97,7 @@
                 init() {
                     window.addEventListener('online', () => this.isOnline = true);
                     window.addEventListener('offline', () => this.isOnline = false);
+                    window.addEventListener('mx-offline-logs-updated', () => this.updatePending());
                     this.updatePending();
                 },
 
@@ -112,13 +113,17 @@
                     if (!examId) return;
 
                     try {
-                        const resp = await fetch(`/api/v1/offline/schedule/${examId}`, {
-                        headers: { 'Accept': 'application/json' }
-                    });
-                        if (!resp.ok) throw new Error("Failed to fetch schedule");
+                        const [scheduleResp, keyResp] = await Promise.all([
+                            fetch(`/api/v1/offline/schedule/${examId}`, { headers: { 'Accept': 'application/json' } }),
+                            fetch('/api/v1/offline/keys', { headers: { 'Accept': 'application/json' } }),
+                        ]);
+                        if (!scheduleResp.ok) throw new Error("Failed to fetch schedule");
+                        if (!keyResp.ok) throw new Error("RSA public key is not configured on the server");
 
-                        const data = await resp.json();
-                        localStorage.setItem('mx_offline_schedule', JSON.stringify(data.allocations));
+                        const data = await scheduleResp.json();
+                        const keyData = await keyResp.json();
+                        localStorage.setItem('mx_offline_schedule', JSON.stringify(data));
+                        localStorage.setItem('mx_offline_public_key', keyData.public_key);
                         this.lastDownload = new Date().toLocaleString();
                         localStorage.setItem('mx_last_download', this.lastDownload);
                         alert("Schedule downloaded successfully!");
@@ -143,11 +148,14 @@
                         });
 
                         const data = await resp.json();
-                        if (data.success) {
-                            localStorage.setItem('mx_offline_logs', '[]');
-                            this.updatePending();
-                            alert(`Synced ${data.synced_count} records successfully!`);
+                        const accepted = new Set(data.accepted_indexes || []);
+                        if (accepted.size > 0) {
+                            localStorage.setItem('mx_offline_logs', JSON.stringify(logs.filter((_, index) => !accepted.has(index))));
+                            window.dispatchEvent(new Event('mx-offline-logs-updated'));
                         }
+                        if (data.success) {
+                            alert(`Synced ${data.synced_count} records successfully!`);
+                        } else alert("Some records could not be synced: " + data.errors.join('; '));
                     } catch (err) {
                         alert("Sync failed: " + err.message);
                     }
@@ -241,79 +249,106 @@
                 }
             }
 
-            function validateOffline(payload) {
-                // For the prototype, we assume the QR payload is the JSON string
-                // In production, we'd verify the HMAC here if we have the key
-                let qrData;
+            async function validateOffline(payload) {
                 try {
-                    qrData = JSON.parse(payload);
+                    const qrData = await verifyOfflineJwt(payload);
+                    const schedule = JSON.parse(localStorage.getItem('mx_offline_schedule') || '{}');
+                    const allocation = (schedule.allocations || []).find(a => a.aid == qrData.aid);
+
+                    if (!allocation) throw new Error('Student not found in downloaded schedule');
+
+                    const now = Math.floor(Date.now() / 1000);
+                    const windowSeconds = (schedule.entry_window || 15) * 60;
+                    if (now < allocation.start - windowSeconds) throw new Error('Session has not started');
+                    if (now > allocation.end + windowSeconds || now > qrData.exp) throw new Error('Entry window has passed');
+
+                    const logs = JSON.parse(localStorage.getItem('mx_offline_logs') || '[]');
+                    if (logs.some(log => log.aid == allocation.aid)) throw new Error('This pass was already scanned on this device');
+
+                    const data = {
+                        valid: true,
+                        result_label: 'Valid (Offline)',
+                        message: 'Entry Permitted',
+                        student: {
+                            name: allocation.student,
+                            matric_number: allocation.matric,
+                            hall: allocation.hall,
+                            system: allocation.system
+                        }
+                    };
+
+                    logs.push({ aid: allocation.aid, qr_payload: payload, scanned_at: now });
+                    localStorage.setItem('mx_offline_logs', JSON.stringify(logs));
+                    window.dispatchEvent(new Event('mx-offline-logs-updated'));
+                    showResult(data);
+                    addToHistory(data);
                 } catch (e) {
-                    showResult({ valid: false, result_label: 'Invalid QR', message: 'Malformed data' });
-                    return;
-                }
-
-                const schedule = JSON.parse(localStorage.getItem('mx_offline_schedule') || '[]');
-                const allocation = schedule.find(a => a.aid == qrData.aid);
-
-                if (!allocation) {
-                    const data = { valid: false, result_label: 'Not in Schedule', message: 'Student not found in offline data' };
+                    const data = { valid: false, result_label: 'Invalid QR', message: e.message || 'Signature verification failed' };
                     showResult(data);
                     addToHistory(data);
-                    return;
-                }
-
-                // Check session match
-                const now = Math.floor(Date.now() / 1000);
-                const window = 15 * 60; // 15 minutes grace
-
-                if (now < allocation.start - window) {
-                    const data = { valid: false, result_label: 'Too Early', message: 'Session has not started' };
-                    showResult(data);
-                    addToHistory(data);
-                    return;
-                }
-
-                // If valid, store in offline logs
-                const data = {
-                    valid: true,
-                    result_label: 'Valid (Offline)',
-                    message: 'Entry Permitted',
-                    student: {
-                        name: allocation.student,
-                        matric_number: allocation.matric,
-                        hall: allocation.hall,
-                        system: allocation.system
-                    }
-                };
-
-                const logs = JSON.parse(localStorage.getItem('mx_offline_logs') || '[]');
-                logs.push({
-                    aid: allocation.aid,
-                    scanned_at: now,
-                    result: 'valid'
-                });
-                localStorage.setItem('mx_offline_logs', JSON.stringify(logs));
-
-                // Update UI
-                showResult(data);
-                addToHistory(data);
-
-                // Refresh Alpine data if present
-                if (window.Alpine) {
-                    // This is a bit hacky but works for manual Alpine init
                 }
             }
 
+            async function verifyOfflineJwt(token) {
+                const parts = token.split('.');
+                if (parts.length !== 3) throw new Error('Malformed signed pass');
+
+                const publicKey = localStorage.getItem('mx_offline_public_key');
+                if (!publicKey) throw new Error('Download an offline schedule before scanning');
+
+                const key = await crypto.subtle.importKey(
+                    'spki',
+                    pemToBytes(publicKey),
+                    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+                    false,
+                    ['verify']
+                );
+                const valid = await crypto.subtle.verify(
+                    'RSASSA-PKCS1-v1_5',
+                    key,
+                    base64UrlToBytes(parts[2]),
+                    new TextEncoder().encode(`${parts[0]}.${parts[1]}`)
+                );
+                if (!valid) throw new Error('Signature verification failed');
+
+                const data = JSON.parse(new TextDecoder().decode(base64UrlToBytes(parts[1])));
+                for (const field of ['aid', 'sid', 'pid', 'ses', 'exp']) {
+                    if (data[field] === undefined) throw new Error('Signed pass is missing required claims');
+                }
+                return data;
+            }
+
+            function pemToBytes(pem) {
+                return Uint8Array.from(atob(pem.replace(/-----[^-]+-----/g, '').replace(/\s/g, '')), c => c.charCodeAt(0));
+            }
+
+            function base64UrlToBytes(value) {
+                const base64 = value.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(value.length / 4) * 4, '=');
+                return Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+            }
+
+            function escapeHtml(value) {
+                return String(value ?? '').replace(/[&<>"']/g, char => ({
+                    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+                })[char]);
+            }
+
             function showResult(data) {
+                const label = escapeHtml(data.result_label || (data.valid ? 'Valid' : 'Invalid'));
+                const message = escapeHtml(data.message || '');
+                if (data.student) {
+                    data.student.hall = escapeHtml(data.student.hall);
+                    data.student.system = escapeHtml(data.student.system);
+                }
                 if (data.valid) {
                     resultContent.innerHTML = `
                         <div class="scan-result valid">
                             <svg class="w-12 h-12 mx-auto mb-2 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
-                            <p class="text-xl font-bold">${data.result_label || 'Valid'}</p>
+                            <p class="text-xl font-bold">${label}</p>
                             ${data.student ? `
                                 <div class="mt-3 text-left bg-white rounded-lg p-3 text-sm">
-                                    <p><strong>${data.student.name}</strong></p>
-                                    <p class="text-gray-600">${data.student.matric_number}</p>
+                                    <p><strong>${escapeHtml(data.student.name)}</strong></p>
+                                    <p class="text-gray-600">${escapeHtml(data.student.matric_number)}</p>
                                     <p class="text-gray-600">Hall: ${data.student.hall} · System: ${data.student.system}</p>
                                 </div>
                             ` : ''}
@@ -322,8 +357,8 @@
                     resultContent.innerHTML = `
                         <div class="scan-result invalid">
                             <svg class="w-12 h-12 mx-auto mb-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"/></svg>
-                            <p class="text-xl font-bold">${data.result_label || 'Invalid'}</p>
-                            <p class="text-sm mt-1">${data.message}</p>
+                            <p class="text-xl font-bold">${label}</p>
+                            <p class="text-sm mt-1">${message}</p>
                         </div>`;
                 }
             }
@@ -335,8 +370,8 @@
                 entry.innerHTML = `
                     <div>
                         <span class="text-xs font-mono text-gray-400">${time}</span>
-                        <span class="text-sm font-medium ${data.valid ? 'text-emerald-700' : 'text-red-700'} ml-2">${data.result_label || 'Valid'}</span>
-                        ${data.student ? `<span class="text-xs text-gray-500 ml-2">${data.student.name}</span>` : ''}
+                        <span class="text-sm font-medium ${data.valid ? 'text-emerald-700' : 'text-red-700'} ml-2">${escapeHtml(data.result_label || 'Valid')}</span>
+                        ${data.student ? `<span class="text-xs text-gray-500 ml-2">${escapeHtml(data.student.name)}</span>` : ''}
                     </div>`;
 
                 if (historyEl.querySelector('p')) historyEl.innerHTML = '';

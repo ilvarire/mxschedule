@@ -20,7 +20,9 @@ class ReportService
      */
     public function attendanceReport(Exam $exam): array
     {
-        $sessions = $exam->sessions()->with('allocations.studentProfile.user')->get();
+        $sessions = $exam->sessions()->with(['allocations' => fn ($q) => $q
+            ->where('seat_status', '!=', SeatStatus::Reassigned)
+            ->with(['studentProfile.user', 'hall', 'system'])])->get();
 
         $total = 0;
         $checkedIn = 0;
@@ -136,7 +138,7 @@ class ReportService
      */
     protected function recentAttendanceRate(): float
     {
-        $total = ExamAllocation::whereHas('examSession', function ($q) {
+        $total = ExamAllocation::where('seat_status', '!=', SeatStatus::Reassigned)->whereHas('examSession', function ($q) {
             $q->where('start_time', '>=', now()->subDays(7));
         })->count();
 

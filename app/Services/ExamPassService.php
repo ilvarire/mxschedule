@@ -47,12 +47,10 @@ class ExamPassService
             random_int(0, PHP_INT_MAX),
         ]));
 
-        // Build QR payload
-        $payload = $this->buildQrPayload($allocation, $passCode);
-
         // Calculate expiry (session end + grace)
         $graceMinutes = (int) Setting::getValue('pass_grace_minutes', 5);
         $expiresAt = $allocation->examSession->end_time->copy()->addMinutes($graceMinutes);
+        $payload = $this->buildQrPayload($allocation, $passCode, $expiresAt->timestamp);
 
         return ExamPass::create([
             'exam_allocation_id' => $allocation->id,
@@ -65,7 +63,7 @@ class ExamPassService
     /**
      * Build the signed QR payload.
      */
-    protected function buildQrPayload(ExamAllocation $allocation, string $passCode): string
+    protected function buildQrPayload(ExamAllocation $allocation, string $passCode, int $expiresAt): string
     {
         $now = time();
         $data = [
@@ -74,7 +72,7 @@ class ExamPassService
             'sub' => (string) $allocation->student_profile_id,
             'iat' => $now,
             'nbf' => $now,
-            'exp' => $allocation->examSession->end_time->timestamp,
+            'exp' => $expiresAt,
             'jti' => $passCode,
             
             // Custom claims
@@ -91,7 +89,10 @@ class ExamPassService
             return \Firebase\JWT\JWT::encode($data, $privateKey, 'RS256');
         } else {
             // Fallback to HMAC if RSA keys are not set up (for local dev)
-            $signingKey = Setting::getValue('qr_signing_key') ?? 'default_dev_key';
+            $signingKey = Setting::getValue('qr_signing_key') ?: config('app.key');
+            if (! $signingKey) {
+                throw new \RuntimeException('Configure RSA exam keys or a QR signing key before generating passes.');
+            }
             return \Firebase\JWT\JWT::encode($data, $signingKey, 'HS256');
         }
     }

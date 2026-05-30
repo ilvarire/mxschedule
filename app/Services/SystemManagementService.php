@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\SystemStatus;
 use App\Models\Hall;
 use App\Models\System;
+use App\Models\SystemAuditLog;
 use App\Models\SystemStatusLog;
 use Illuminate\Support\Collection;
 
@@ -19,6 +20,11 @@ class SystemManagementService
     {
         $prefix = $prefix ?? $hall->code;
         $existingCount = $hall->systems()->count();
+        if ($existingCount + $count > $hall->capacity) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'count' => "This hall can contain at most {$hall->capacity} systems.",
+            ]);
+        }
         $systems = collect();
 
         for ($i = 1; $i <= $count; $i++) {
@@ -63,6 +69,16 @@ class SystemManagementService
             'new_status' => $newStatus,
             'changed_by' => $changedBy,
             'reason' => $reason,
+        ]);
+
+        SystemAuditLog::create([
+            'user_id' => $changedBy,
+            'action' => 'system.status_updated',
+            'auditable_type' => System::class,
+            'auditable_id' => $system->id,
+            'old_values' => ['status' => $previousStatus->value],
+            'new_values' => ['status' => $newStatus->value, 'reason' => $reason],
+            'ip_address' => request()?->ip(),
         ]);
 
         return $system;

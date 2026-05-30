@@ -215,6 +215,15 @@ supervisorctl update
 supervisorctl start all
 ```
 
+### Scheduler
+
+Run Laravel's scheduler every minute so completed sessions are closed and absent
+students are marked as no-shows:
+
+```cron
+* * * * * cd /var/www/mxschedule && php artisan schedule:run >> /dev/null 2>&1
+```
+
 ---
 
 ## Step 12 — Web Server Configuration (Nginx)

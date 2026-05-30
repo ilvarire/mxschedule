@@ -29,6 +29,11 @@ class GenerateExamPassPdfJob implements ShouldQueue
         Log::info("Generating passes for Exam #{$this->exam->id}");
 
         $count = $passService->generateForExam($this->exam->id);
+        $this->exam->allocations()->with('examPass')->get()->each(function ($allocation) use ($passService) {
+            if ($allocation->examPass && ! $allocation->examPass->pdf_path) {
+                $passService->generatePdf($allocation->examPass);
+            }
+        });
 
         Log::info("Generated {$count} passes for Exam #{$this->exam->id}");
     }

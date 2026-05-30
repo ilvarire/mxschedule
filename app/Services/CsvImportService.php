@@ -135,12 +135,7 @@ class CsvImportService
             foreach ($courseCodes as $code) {
                 $course = Course::where('code', strtoupper($code))->first();
                 if ($course) {
-                    $profile->courses()->syncWithoutDetaching([
-                        $course->id => [
-                            'academic_session' => $academicSession,
-                            'semester' => $semester,
-                        ],
-                    ]);
+                    $this->enroll($profile, $course, $academicSession, $semester);
                 }
             }
         }
@@ -175,12 +170,7 @@ class CsvImportService
             return;
         }
 
-        $profile->courses()->syncWithoutDetaching([
-            $course->id => [
-                'academic_session' => $academicSession,
-                'semester' => $semester,
-            ],
-        ]);
+        $this->enroll($profile, $course, $academicSession, $semester);
 
         $this->imported++;
     }
@@ -215,6 +205,22 @@ class CsvImportService
         fclose($handle);
 
         return $rows;
+    }
+
+    protected function enroll(StudentProfile $profile, Course $course, string $academicSession, string $semester): void
+    {
+        DB::table('course_student')->updateOrInsert(
+            [
+                'course_id' => $course->id,
+                'student_profile_id' => $profile->id,
+                'academic_session' => $academicSession,
+                'semester' => $semester,
+            ],
+            [
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        );
     }
 
     protected function results(?string $globalError = null): array

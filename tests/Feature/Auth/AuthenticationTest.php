@@ -43,16 +43,14 @@ test('users can not authenticate with invalid password', function () {
     $this->assertGuest();
 });
 
-test('navigation menu can be rendered', function () {
+test('users without an assigned role return to the welcome page', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user);
 
     $response = $this->get('/dashboard');
 
-    $response
-        ->assertOk()
-        ->assertSeeVolt('layout.navigation');
+    $response->assertRedirect('/');
 });
 
 test('users can logout', function () {

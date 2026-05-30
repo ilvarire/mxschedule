@@ -58,9 +58,13 @@
                                     <form action="{{ route('admin.reallocate') }}" method="POST">
                                         @csrf
                                         <input type="hidden" name="allocation_id" value="{{ $alloc->id }}">
-                                        <button type="submit" class="text-indigo-600 hover:text-indigo-900 text-xs font-bold uppercase tracking-wider">
-                                            Re-allocate
-                                        </button>
+                                        <select name="new_system_id" class="form-input-styled text-xs mb-1" required>
+                                            <option value="">Select system...</option>
+                                            @foreach(\App\Models\System::available()->orderBy('system_code')->get() as $system)
+                                                <option value="{{ $system->id }}">{{ $system->system_code }}</option>
+                                            @endforeach
+                                        </select>
+                                        <button type="submit" class="text-indigo-600 hover:text-indigo-900 text-xs font-bold uppercase tracking-wider">Re-allocate</button>
                                     </form>
                                 </td>
                             </tr>

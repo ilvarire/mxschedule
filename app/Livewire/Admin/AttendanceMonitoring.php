@@ -48,9 +48,11 @@ class AttendanceMonitoring extends Component
     {
         if (!$this->sessionId) return null;
 
-        $totalAllocated = ExamAllocation::where('exam_session_id', $this->sessionId)->count();
+        $totalAllocated = ExamAllocation::where('exam_session_id', $this->sessionId)
+            ->where('seat_status', '!=', 'reassigned')
+            ->count();
         $checkedIn = ExamAllocation::where('exam_session_id', $this->sessionId)
-            ->where('seat_status', 'checked_in')
+            ->whereIn('seat_status', ['checked_in', 'completed'])
             ->count();
 
         return [
@@ -66,6 +68,7 @@ class AttendanceMonitoring extends Component
         if (!$this->sessionId) return [];
 
         $allocations = ExamAllocation::where('exam_session_id', $this->sessionId)
+            ->where('seat_status', '!=', 'reassigned')
             ->with(['studentProfile.user', 'system', 'hall'])
             ->get();
 
@@ -88,6 +91,7 @@ class AttendanceMonitoring extends Component
         return AttendanceLog::whereHas('allocation', function ($q) {
                 $q->where('exam_session_id', $this->sessionId);
             })
+            ->where('scan_result', 'valid')
             ->with('allocation.studentProfile.user')
             ->latest()
             ->limit(10)
@@ -113,6 +117,7 @@ class AttendanceMonitoring extends Component
         $logs = AttendanceLog::whereHas('allocation', function ($q) {
                 $q->where('exam_session_id', $this->sessionId);
             })
+            ->where('scan_result', 'valid')
             ->selectRaw("$hourExpression as hour, COUNT(*) as count")
             ->groupByRaw($hourExpression)
             ->pluck('count', 'hour');

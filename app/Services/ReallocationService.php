@@ -9,6 +9,7 @@ use App\Models\ExamSession;
 use App\Models\System;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class ReallocationService
 {
@@ -56,7 +57,9 @@ class ReallocationService
                     continue;
                 }
 
-                // Create new allocation
+                // Retire the old row first so the database can accept its replacement.
+                $old->update(['seat_status' => SeatStatus::Reassigned]);
+
                 $new = ExamAllocation::create([
                     'exam_session_id' => $old->exam_session_id,
                     'student_profile_id' => $old->student_profile_id,
@@ -65,9 +68,6 @@ class ReallocationService
                     'seat_status' => SeatStatus::Allocated,
                     'reassigned_from_id' => $old->id,
                 ]);
-
-                // Mark old allocation as reassigned
-                $old->update(['seat_status' => SeatStatus::Reassigned]);
 
                 // Delete old pass and generate new one
                 $old->examPass?->delete();
@@ -88,7 +88,28 @@ class ReallocationService
     {
         return \Illuminate\Support\Facades\Cache::lock("reallocate_student_{$oldAllocation->id}", 10)->get(function () use ($oldAllocation, $newSystem) {
             return DB::transaction(function () use ($oldAllocation, $newSystem) {
-                // Create new allocation
+                $oldAllocation = ExamAllocation::query()->lockForUpdate()->findOrFail($oldAllocation->id);
+                $newSystem = System::query()->lockForUpdate()->findOrFail($newSystem->id);
+
+                if ($oldAllocation->seat_status === SeatStatus::Reassigned) {
+                    throw ValidationException::withMessages(['allocation_id' => 'This allocation has already been reassigned.']);
+                }
+
+                if (! $newSystem->isActive() || ! $newSystem->hall?->is_active) {
+                    throw ValidationException::withMessages(['new_system_id' => 'Select an active system in an active hall.']);
+                }
+
+                $systemIsOccupied = ExamAllocation::where('exam_session_id', $oldAllocation->exam_session_id)
+                    ->where('system_id', $newSystem->id)
+                    ->where('seat_status', '!=', SeatStatus::Reassigned)
+                    ->exists();
+
+                if ($systemIsOccupied) {
+                    throw ValidationException::withMessages(['new_system_id' => 'That system is already allocated in this session.']);
+                }
+
+                $oldAllocation->update(['seat_status' => SeatStatus::Reassigned]);
+
                 $new = ExamAllocation::create([
                     'exam_session_id' => $oldAllocation->exam_session_id,
                     'student_profile_id' => $oldAllocation->student_profile_id,
@@ -97,9 +118,6 @@ class ReallocationService
                     'seat_status' => SeatStatus::Allocated,
                     'reassigned_from_id' => $oldAllocation->id,
                 ]);
-
-                // Mark old allocation
-                $oldAllocation->update(['seat_status' => SeatStatus::Reassigned]);
 
                 // Regenerate pass
                 $oldAllocation->examPass?->delete();

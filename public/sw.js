@@ -1,44 +1,32 @@
-const CACHE_NAME = 'mxschedule-offline-v1';
-const ASSETS_TO_CACHE = [
-    '/invigilator/scanner',
-    '/css/app.css',
-    '/js/app.js',
-    '/manifest.json',
-    '/icons/icon-192x192.png',
-    '/icons/icon-512x512.png',
-];
+const CACHE_NAME = 'mxschedule-offline-v2';
+const CORE_ASSETS = ['/favicon.svg'];
 
-// Install Event - Cache initial assets
-self.addEventListener('install', (event) => {
-    event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => {
-            return cache.addAll(ASSETS_TO_CACHE);
-        })
-    );
+self.addEventListener('install', event => {
+    event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(CORE_ASSETS)));
+    self.skipWaiting();
 });
 
-// Activate Event - Clean up old caches
-self.addEventListener('activate', (event) => {
+self.addEventListener('activate', event => {
     event.waitUntil(
-        caches.keys().then((cacheNames) => {
-            return Promise.all(
-                cacheNames.map((cache) => {
-                    if (cache !== CACHE_NAME) {
-                        return caches.delete(cache);
-                    }
-                })
-            );
-        })
+        caches.keys().then(names => Promise.all(
+            names.filter(name => name !== CACHE_NAME).map(name => caches.delete(name))
+        ))
     );
+    self.clients.claim();
 });
 
-// Fetch Event - Serve from cache if offline
-self.addEventListener('fetch', (event) => {
+self.addEventListener('fetch', event => {
     if (event.request.method !== 'GET') return;
 
     event.respondWith(
-        fetch(event.request).catch(() => {
-            return caches.match(event.request);
-        })
+        fetch(event.request)
+            .then(response => {
+                if (response.ok) {
+                    const copy = response.clone();
+                    caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
+                }
+                return response;
+            })
+            .catch(() => caches.match(event.request))
     );
 });

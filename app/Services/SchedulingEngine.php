@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Enums\ExamStatus;
 use App\Enums\SeatStatus;
-use App\Enums\SystemStatus;
 use App\Jobs\SendScheduleNotificationsJob;
 use App\Models\Exam;
 use App\Models\ExamAllocation;
@@ -17,95 +16,75 @@ use Illuminate\Support\Facades\DB;
 
 class SchedulingEngine
 {
-    /**
-     * Generate the full schedule for an exam.
-     *
-     * @throws \RuntimeException
-     */
     public function generateSchedule(Exam $exam, ?int $userId = null): void
     {
-        // ── STEP 1: Validate state ──────────────────────
         if (! $exam->canBeScheduled()) {
             throw new \RuntimeException("Exam #{$exam->id} cannot be scheduled in its current state ({$exam->status->value}).");
         }
 
-        // Mark as scheduling (optimistic lock)
         $exam->update(['status' => ExamStatus::Scheduling]);
 
         try {
-            DB::transaction(function () use ($exam, $userId) {
-                $this->executeScheduling($exam, $userId);
-            });
+            DB::transaction(fn () => $this->executeScheduling($exam, $userId));
         } catch (\Throwable $e) {
-            // Revert status on failure
             $exam->update(['status' => ExamStatus::Draft]);
             throw $e;
         }
     }
 
-    /**
-     * Core scheduling logic inside a transaction.
-     */
     protected function executeScheduling(Exam $exam, ?int $userId = null): void
     {
-        // ── STEP 2: Gather inputs ───────────────────────
         $students = $this->getRegisteredStudents($exam);
-        $activeSystems = System::available()->lockForUpdate()->skipLocked()->get();
 
-        $totalStudents = $students->count();
-        $totalSystems = $activeSystems->count();
-
-        if ($totalSystems === 0) {
+        if (System::available()->count() === 0) {
             throw new \RuntimeException('No active systems available for scheduling.');
         }
 
-        if ($totalStudents === 0) {
+        if ($students->isEmpty()) {
             throw new \RuntimeException('No students registered for this exam course.');
         }
 
-        // ── STEP 3: Calculate sessions ──────────────────
-        $sessionsNeeded = (int) ceil($totalStudents / $totalSystems);
-
-        // ── STEP 4: Build time slots ────────────────────
-        $slots = $this->buildTimeSlots($exam, $sessionsNeeded);
-
-        // ── STEP 5: Shuffle students (CSPRNG fairness) ──
-        $shuffledStudents = $this->cryptographicShuffle($students);
-
-        // ── STEP 6: Batch students into sessions ────────
-        $batches = $shuffledStudents->chunk($totalSystems);
-
-        // ── STEP 7: Create sessions and allocations ─────
-        // Clear any previous sessions (for re-scheduling)
         $exam->sessions()->delete();
 
+        $remainingStudents = $this->cryptographicShuffle($students)->values();
+        $currentStart = $this->firstSlotStart($exam);
         $sessionNumber = 0;
-        foreach ($batches as $batch) {
+        $emptySlotCount = 0;
+
+        while ($remainingStudents->isNotEmpty()) {
+            [$slotStart, $slotEnd] = $this->normalizeSlot($currentStart, $exam->duration_minutes);
+            $availableSystems = $this->availableSystemsForSlot($slotStart, $slotEnd);
+
+            if ($availableSystems->isEmpty()) {
+                $emptySlotCount++;
+                if ($emptySlotCount > 365) {
+                    throw new \RuntimeException('Unable to find an available exam slot within the next 365 operating slots.');
+                }
+
+                $currentStart = $slotEnd->copy()->addMinutes($exam->buffer_minutes);
+                continue;
+            }
+
+            $emptySlotCount = 0;
+            $batch = $remainingStudents->splice(0, $availableSystems->count());
             $sessionNumber++;
-            $slot = $slots[$sessionNumber - 1];
 
             $session = ExamSession::create([
                 'exam_id' => $exam->id,
                 'session_number' => $sessionNumber,
-                'start_time' => $slot['start'],
-                'end_time' => $slot['end'],
-                'max_capacity' => $totalSystems,
+                'start_time' => $slotStart,
+                'end_time' => $slotEnd,
+                'max_capacity' => $availableSystems->count(),
                 'allocated_count' => $batch->count(),
                 'status' => 'pending',
             ]);
 
-            // Shuffle systems for this batch (anti-cheating)
-            $shuffledSystems = $this->cryptographicShuffle($activeSystems);
-
-            // Build allocation records
+            $shuffledSystems = $this->cryptographicShuffle($availableSystems);
             $allocations = [];
             $now = now();
-            $batchValues = $batch->values();
 
-            for ($i = 0; $i < $batchValues->count(); $i++) {
-                $student = $batchValues[$i];
-                $system = $shuffledSystems[$i];
-
+            foreach ($batch->values() as $index => $student) {
+                $system = $shuffledSystems[$index];
                 $allocations[] = [
                     'exam_session_id' => $session->id,
                     'student_profile_id' => $student->id,
@@ -117,27 +96,23 @@ class SchedulingEngine
                 ];
             }
 
-            // Bulk insert in chunks for performance
             foreach (array_chunk($allocations, 500) as $chunk) {
                 ExamAllocation::insert($chunk);
             }
+
+            $currentStart = $slotEnd->copy()->addMinutes($exam->buffer_minutes);
         }
 
-        // ── STEP 8: Update exam status ──────────────────
         $exam->update([
             'status' => ExamStatus::Scheduled,
             'scheduled_at' => now(),
             'scheduled_by' => $userId ?? auth()->id() ?? 1,
-            'total_registered_students' => $totalStudents,
+            'total_registered_students' => $students->count(),
         ]);
 
-        // ── STEP 9: Dispatch student notifications ──────
         SendScheduleNotificationsJob::dispatch($exam)->onQueue('notifications');
     }
 
-    /**
-     * Get registered students for the exam's course.
-     */
     protected function getRegisteredStudents(Exam $exam): Collection
     {
         return StudentProfile::whereHas('courses', function ($query) use ($exam) {
@@ -147,48 +122,54 @@ class SchedulingEngine
         })->get();
     }
 
-    /**
-     * Build time slots for all sessions.
-     *
-     * @return array<int, array{start: Carbon, end: Carbon}>
-     */
-    protected function buildTimeSlots(Exam $exam, int $sessionsNeeded): array
+    protected function firstSlotStart(Exam $exam): Carbon
     {
-        $slots = [];
-        $currentStart = Carbon::parse($exam->exam_date)->startOfDay()->addHours(Carbon::parse($exam->start_time)->hour)->addMinutes(Carbon::parse($exam->start_time)->minute);
+        $time = Carbon::parse($exam->start_time);
 
-        $operatingHourEnd = 18; // 6 PM
-        $operatingHourStart = 8; // 8 AM
-
-        for ($i = 0; $i < $sessionsNeeded; $i++) {
-            $end = $currentStart->copy()->addMinutes($exam->duration_minutes);
-
-            // Check if session exceeds operating hours
-            if ($end->hour >= $operatingHourEnd && !($end->hour === $operatingHourEnd && $end->minute === 0)) {
-                // Move to next day at starting hour
-                $currentStart->addDay()->startOfDay()->addHours($operatingHourStart);
-                $end = $currentStart->copy()->addMinutes($exam->duration_minutes);
-            }
-
-            $slots[] = [
-                'start' => $currentStart->copy(),
-                'end' => $end,
-            ];
-            $currentStart = $end->copy()->addMinutes($exam->buffer_minutes);
-        }
-
-        return $slots;
+        return Carbon::parse($exam->exam_date)->startOfDay()
+            ->addHours($time->hour)
+            ->addMinutes($time->minute);
     }
 
     /**
-     * Fisher-Yates shuffle using cryptographically secure random_int().
+     * @return array{Carbon, Carbon}
      */
+    protected function normalizeSlot(Carbon $requestedStart, int $durationMinutes): array
+    {
+        $start = $requestedStart->copy();
+        $end = $start->copy()->addMinutes($durationMinutes);
+
+        if ($start->hour < 8 || $end->gt($start->copy()->startOfDay()->addHours(18))) {
+            $start = $start->copy()->addDay()->startOfDay()->addHours(8);
+            $end = $start->copy()->addMinutes($durationMinutes);
+        }
+
+        if ($end->gt($start->copy()->startOfDay()->addHours(18))) {
+            throw new \RuntimeException('Exam duration exceeds the configured 8 AM to 6 PM operating window.');
+        }
+
+        return [$start, $end];
+    }
+
+    protected function availableSystemsForSlot(Carbon $start, Carbon $end): Collection
+    {
+        return System::available()
+            ->whereDoesntHave('examAllocations', function ($query) use ($start, $end) {
+                $query->where('seat_status', '!=', SeatStatus::Reassigned)
+                    ->whereHas('examSession', function ($sessionQuery) use ($start, $end) {
+                        $sessionQuery->where('start_time', '<', $end)
+                            ->where('end_time', '>', $start);
+                    });
+            })
+            ->lockForUpdate()
+            ->get();
+    }
+
     protected function cryptographicShuffle(Collection $items): Collection
     {
         $array = $items->values()->all();
-        $count = count($array);
 
-        for ($i = $count - 1; $i > 0; $i--) {
+        for ($i = count($array) - 1; $i > 0; $i--) {
             $j = random_int(0, $i);
             [$array[$i], $array[$j]] = [$array[$j], $array[$i]];
         }

@@ -80,14 +80,14 @@
                     <div class="card overflow-hidden">
                         <div class="bg-gray-50 px-4 py-3 border-b border-gray-100 flex justify-between items-center">
                             <h3 class="font-semibold text-gray-900">{{ $data['name'] }}</h3>
-                            <span class="text-xs text-gray-500">{{ $data['allocations']->where('seat_status', 'checked_in')->count() }} / {{ $data['allocations']->count() }}</span>
+                            <span class="text-xs text-gray-500">{{ $data['allocations']->filter(fn ($allocation) => in_array($allocation->seat_status->value, ['checked_in', 'completed']))->count() }} / {{ $data['allocations']->count() }}</span>
                         </div>
                         <div class="p-4">
                             <div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
                                 @foreach($data['allocations'] as $allocation)
                                     <div 
                                         class="aspect-square rounded flex items-center justify-center text-[10px] font-medium transition-all cursor-help
-                                        {{ $allocation->seat_status === 'checked_in' ? 'bg-emerald-500 text-white shadow-sm shadow-emerald-200' : 'bg-gray-100 text-gray-400' }}"
+                                        {{ in_array($allocation->seat_status->value, ['checked_in', 'completed']) ? 'bg-emerald-500 text-white shadow-sm shadow-emerald-200' : 'bg-gray-100 text-gray-400' }}"
                                         title="{{ $allocation->studentProfile->user->name }} ({{ $allocation->system->system_code }})"
                                     >
                                         {{ $loop->iteration }}
