@@ -1,3 +1,6 @@
 name,email,matric_number,department_code,level,courses
-Test Student 1,test1@mxschedule.test,TEST/2026/001,CSE,300,CSE301|PHY101
-Test Student 2,test2@mxschedule.test,TEST/2026/002,CSE,200,PHY101
+Ada Okafor,ada.okafor@mxschedule.test,CSE/2026/003,CSE,300,CSE301|CSE401
+David Mensah,david.mensah@mxschedule.test,CSE/2026/004,CSE,400,CSE401
+Grace Eze,grace.eze@mxschedule.test,EEE/2026/005,EEE,200,EEE201|PHY101
+Samuel Bello,samuel.bello@mxschedule.test,PHY/2026/006,PHY,100,PHY101
+Fatima Lawal,fatima.lawal@mxschedule.test,CSE/2026/007,CSE,200,CSE301|PHY101
