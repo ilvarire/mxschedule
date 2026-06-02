@@ -31,6 +31,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Profile (Breeze default)
     Route::view('profile', 'profile')->name('profile');
+    Route::get('profile/password', [PasswordController::class, 'edit'])->name('profile.password.edit');
     Route::patch('profile/password', [PasswordController::class, 'update'])->name('profile.password.update');
 
     // ── Admin Routes ────────────────────────────

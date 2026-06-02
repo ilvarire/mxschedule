@@ -15,7 +15,17 @@
 
             <div class="p-4 sm:p-8 bg-white shadow sm:rounded-lg">
                 <div class="max-w-xl">
-                    <livewire:profile.update-password-form />
+                    <h2 class="text-lg font-medium text-gray-900">
+                        {{ __('Password') }}
+                    </h2>
+
+                    <p class="mt-1 text-sm text-gray-600">
+                        {{ __('Manage your password on a separate secure page.') }}
+                    </p>
+
+                    <a href="{{ route('profile.password.edit') }}" class="btn btn-primary mt-6">
+                        {{ __('Change Password') }}
+                    </a>
                 </div>
             </div>
 
