@@ -1,6 +1,6 @@
 <x-layouts.app :title="'Live Attendance Monitoring'">
     <x-slot name="header">
-        <div class="flex items-center justify-between">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h1 class="text-2xl font-bold text-gray-900">Live Monitor</h1>
             <div class="flex items-center gap-2">
                 <span class="relative flex h-3 w-3">

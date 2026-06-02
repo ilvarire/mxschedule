@@ -19,7 +19,9 @@ test('password can be updated', function () {
 
     $component
         ->assertHasNoErrors()
-        ->assertNoRedirect();
+        ->assertNoRedirect()
+        ->assertSet('password_updated', true)
+        ->assertSee('Password updated successfully.');
 
     $this->assertTrue(Hash::check('new-password', $user->refresh()->password));
 });

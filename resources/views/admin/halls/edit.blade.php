@@ -16,7 +16,7 @@
                         <input type="text" name="name" value="{{ old('name', $hall->name) }}" class="form-input-styled" required>
                         @error('name') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
                     </div>
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="form-label">Hall Code</label>
                             <input type="text" name="code" value="{{ old('code', $hall->code) }}" class="form-input-styled" required maxlength="10">

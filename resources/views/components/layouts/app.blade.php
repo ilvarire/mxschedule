@@ -84,6 +84,22 @@
                     <a href="{{ route('admin.settings.index') }}" class="sidebar-link {{ request()->routeIs('admin.settings.*') ? 'active' : '' }}">Settings</a>
                     <a href="{{ route('admin.audit-logs.index') }}" class="sidebar-link {{ request()->routeIs('admin.audit-logs.*') ? 'active' : '' }}">Audit Logs</a>
                     @endrole
+
+                    @role('invigilator')
+                    <p class="px-3 pt-5 pb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Invigilation</p>
+                    <a href="{{ route('invigilator.scanner') }}" class="sidebar-link {{ request()->routeIs('invigilator.*') ? 'active' : '' }}">QR Scanner</a>
+                    @endrole
+
+                    @role('student')
+                    <p class="px-3 pt-5 pb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">My Exams</p>
+                    <a href="{{ route('student.dashboard') }}" class="sidebar-link {{ request()->routeIs('student.dashboard') ? 'active' : '' }}">Dashboard</a>
+                    <a href="{{ route('student.notifications.index') }}" class="sidebar-link {{ request()->routeIs('student.notifications.*') ? 'active' : '' }}">
+                        Notifications
+                        @if(auth()->user()->unreadNotifications->count() > 0)
+                        <span class="ml-auto bg-red-500 text-white text-[9px] font-bold rounded-full px-1.5 py-0.5">{{ auth()->user()->unreadNotifications->count() }}</span>
+                        @endif
+                    </a>
+                    @endrole
                 </nav>
 
                 <!-- User -->
@@ -107,11 +123,11 @@
             </aside>
 
             <!-- Main Content -->
-            <div class="flex-1 lg:ml-64">
+            <div class="flex-1 min-w-0 lg:ml-64" x-data="{ mobileMenuOpen: false }" @keydown.escape.window="mobileMenuOpen = false">
             <!-- Mobile Header -->
-            <header class="lg:hidden bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-20" x-data="{ mobileMenuOpen: false }">
+            <header class="lg:hidden bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-20">
                 <div class="flex items-center gap-3">
-                    <button @click="mobileMenuOpen = true" class="p-2 -ml-2 text-gray-500 hover:text-indigo-600 lg:hidden">
+                    <button type="button" @click="mobileMenuOpen = true" :aria-expanded="mobileMenuOpen.toString()" aria-controls="mobile-navigation" aria-label="Open navigation" class="p-2 -ml-2 text-gray-500 hover:text-indigo-600 lg:hidden">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
                     </button>
                     <div class="flex items-center gap-2">
@@ -125,13 +141,11 @@
                 </div>
 
                 {{-- Mobile Side Overlay --}}
-                <template x-if="true">
-                    <div x-show="mobileMenuOpen" 
-                         class="fixed inset-0 z-50 lg:hidden" 
-                         @click.away="mobileMenuOpen = false">
-                        <div class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm" x-show="mobileMenuOpen" x-transition:enter="transition-opacity ease-linear duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition-opacity ease-linear duration-300" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"></div>
+                    <div x-cloak x-show="mobileMenuOpen"
+                         class="fixed inset-0 z-50 lg:hidden">
+                        <div class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm" @click="mobileMenuOpen = false" x-show="mobileMenuOpen" x-transition:enter="transition-opacity ease-linear duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition-opacity ease-linear duration-300" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"></div>
                         
-                        <div class="fixed inset-y-0 left-0 w-64 bg-gray-900 shadow-2xl flex flex-col" x-show="mobileMenuOpen" x-transition:enter="transition ease-in-out duration-300 transform" x-transition:enter-start="-translate-x-full" x-transition:enter-end="translate-x-0" x-transition:leave="transition ease-in-out duration-300 transform" x-transition:leave-start="translate-x-0" x-transition:leave-end="-translate-x-full">
+                        <div id="mobile-navigation" class="fixed inset-y-0 left-0 w-72 max-w-[85vw] bg-gray-900 shadow-2xl flex flex-col" x-show="mobileMenuOpen" x-transition:enter="transition ease-in-out duration-300 transform" x-transition:enter-start="-translate-x-full" x-transition:enter-end="translate-x-0" x-transition:leave="transition ease-in-out duration-300 transform" x-transition:leave-start="translate-x-0" x-transition:leave-end="-translate-x-full">
                             <div class="flex items-center justify-between px-6 py-5 border-b border-white/10">
                                 <div class="flex items-center gap-2">
                                     <div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">
@@ -139,16 +153,15 @@
                                     </div>
                                     <span class="font-bold text-white text-lg">MXSchedule</span>
                                 </div>
-                                <button @click="mobileMenuOpen = false" class="text-gray-400 hover:text-white">
+                                <button type="button" @click="mobileMenuOpen = false" aria-label="Close navigation" class="text-gray-400 hover:text-white">
                                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                                 </button>
                             </div>
                             
-                            {{-- We could extract the nav to a partial but for now we'll just replicate it or use a blade component --}}
                             <div class="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-                                {{-- Sidebar content simplified for mobile --}}
                                 @role('super_admin|exam_officer|ict_admin')
                                 <a href="{{ route('admin.dashboard') }}" class="sidebar-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">Dashboard</a>
+                                <a href="{{ route('admin.monitoring') }}" class="sidebar-link {{ request()->routeIs('admin.monitoring') ? 'active' : '' }}">Live Monitor</a>
                                 @endrole
 
                                 @role('super_admin|ict_admin')
@@ -165,6 +178,19 @@
                                 <a href="{{ route('admin.import.index') }}" class="sidebar-link {{ request()->routeIs('admin.import.*') ? 'active' : '' }}">Import</a>
                                 @endrole
 
+                                @role('super_admin')
+                                <p class="px-3 pt-4 pb-1 text-[10px] font-bold text-gray-600 uppercase">Administration</p>
+                                <a href="{{ route('admin.users.index') }}" class="sidebar-link {{ request()->routeIs('admin.users.*') ? 'active' : '' }}">Users</a>
+                                <a href="{{ route('admin.academic-structure.index') }}" class="sidebar-link {{ request()->routeIs('admin.academic-structure.*') ? 'active' : '' }}">Academic Structure</a>
+                                <a href="{{ route('admin.settings.index') }}" class="sidebar-link {{ request()->routeIs('admin.settings.*') ? 'active' : '' }}">Settings</a>
+                                <a href="{{ route('admin.audit-logs.index') }}" class="sidebar-link {{ request()->routeIs('admin.audit-logs.*') ? 'active' : '' }}">Audit Logs</a>
+                                @endrole
+
+                                @role('invigilator')
+                                <p class="px-3 pt-4 pb-1 text-[10px] font-bold text-gray-600 uppercase">Invigilation</p>
+                                <a href="{{ route('invigilator.scanner') }}" class="sidebar-link {{ request()->routeIs('invigilator.*') ? 'active' : '' }}">QR Scanner</a>
+                                @endrole
+
                                 @role('student')
                                 <p class="px-3 pt-4 pb-1 text-[10px] font-bold text-gray-600 uppercase">My Exams</p>
                                 <a href="{{ route('student.dashboard') }}" class="sidebar-link {{ request()->routeIs('student.dashboard') ? 'active' : '' }}">Dashboard</a>
@@ -176,17 +202,33 @@
                                 </a>
                                 @endrole
                             </div>
+
+                            <div class="px-4 py-4 border-t border-white/10">
+                                <div class="flex items-center gap-3">
+                                    <a href="{{ route('profile') }}" class="w-9 h-9 rounded-full bg-indigo-600 flex items-center justify-center text-white text-sm font-bold">
+                                        {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+                                    </a>
+                                    <a href="{{ route('profile') }}" class="flex-1 min-w-0">
+                                        <p class="text-sm font-medium text-white truncate">{{ auth()->user()->name }}</p>
+                                        <p class="text-xs text-gray-500 truncate">{{ auth()->user()->roles->first()?->name ?? 'User' }}</p>
+                                    </a>
+                                    <form method="POST" action="{{ route('logout') }}">
+                                        @csrf
+                                        <button type="submit" class="text-gray-500 hover:text-white transition-colors" aria-label="Log out">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </template>
 
-                <a href="{{ route('profile') }}" class="text-gray-500 hover:text-indigo-600">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                </a>
-                {{-- Notification Bell --}}
-                @auth
-                <a href="{{ auth()->user()->hasRole('student') ? route('student.notifications.index') : '#' }}"
-                   class="relative text-gray-500 hover:text-indigo-600">
+                <div class="flex items-center gap-4">
+                    <a href="{{ route('profile') }}" class="text-gray-500 hover:text-indigo-600" aria-label="Profile">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </a>
+                    @role('student')
+                    <a href="{{ route('student.notifications.index') }}" class="relative text-gray-500 hover:text-indigo-600" aria-label="Notifications">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
                     </svg>
@@ -195,8 +237,9 @@
                         {{ min(auth()->user()->unreadNotifications->count(), 9) }}{{ auth()->user()->unreadNotifications->count() > 9 ? '+' : '' }}
                     </span>
                     @endif
-                </a>
-                @endauth
+                    </a>
+                    @endrole
+                </div>
             </header>
 
                 <!-- Flash Messages -->

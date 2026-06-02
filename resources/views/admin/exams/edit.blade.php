@@ -21,7 +21,7 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="form-label">Academic Session</label>
                             <input type="text" name="academic_session" value="{{ old('academic_session', $exam->academic_session) }}" class="form-input-styled" required>
@@ -34,7 +34,7 @@
                             </select>
                         </div>
                     </div>
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="form-label">Exam Date</label>
                             <input type="date" name="exam_date" value="{{ old('exam_date', $exam->exam_date->format('Y-m-d')) }}" class="form-input-styled" required>
@@ -44,7 +44,7 @@
                             <input type="time" name="start_time" value="{{ old('start_time', $exam->start_time) }}" class="form-input-styled" required>
                         </div>
                     </div>
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="form-label">Duration (minutes)</label>
                             <input type="number" name="duration_minutes" value="{{ old('duration_minutes', $exam->duration_minutes) }}" class="form-input-styled" min="15" max="300" required>

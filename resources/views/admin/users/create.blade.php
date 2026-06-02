@@ -16,7 +16,7 @@
                         <input type="text" name="name" value="{{ old('name') }}" class="form-input-styled" required>
                         @error('name') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
                     </div>
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="form-label">Email</label>
                             <input type="email" name="email" value="{{ old('email') }}" class="form-input-styled" required>
@@ -35,7 +35,7 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="form-label">Password</label>
                             <input type="password" name="password" class="form-input-styled" required>

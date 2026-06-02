@@ -11,12 +11,15 @@ new class extends Component
     public string $current_password = '';
     public string $password = '';
     public string $password_confirmation = '';
+    public bool $password_updated = false;
 
     /**
      * Update the password for the currently authenticated user.
      */
     public function updatePassword(): void
     {
+        $this->password_updated = false;
+
         try {
             $validated = $this->validate([
                 'current_password' => ['required', 'string', 'current_password'],
@@ -34,7 +37,7 @@ new class extends Component
 
         $this->reset('current_password', 'password', 'password_confirmation');
 
-        $this->dispatch('password-updated');
+        $this->password_updated = true;
     }
 }; ?>
 
@@ -50,6 +53,12 @@ new class extends Component
     </header>
 
     <form wire:submit="updatePassword" class="mt-6 space-y-6">
+        @if ($password_updated)
+            <div class="flash-success" role="status">
+                {{ __('Password updated successfully.') }}
+            </div>
+        @endif
+
         <div>
             <x-input-label for="update_password_current_password" :value="__('Current Password')" />
             <x-text-input wire:model="current_password" id="update_password_current_password" name="current_password" type="password" class="mt-1 block w-full" autocomplete="current-password" />
@@ -70,10 +79,6 @@ new class extends Component
 
         <div class="flex items-center gap-4">
             <x-primary-button>{{ __('Save') }}</x-primary-button>
-
-            <x-action-message class="me-3" on="password-updated">
-                {{ __('Saved.') }}
-            </x-action-message>
         </div>
     </form>
 </section>

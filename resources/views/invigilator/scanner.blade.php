@@ -33,7 +33,7 @@
                 <!-- Manual Input -->
                 <div class="mt-6 pt-6 border-t border-gray-100">
                     <p class="text-sm text-gray-500 mb-3">Or enter QR data manually:</p>
-                    <div class="flex gap-2">
+                    <div class="flex flex-col gap-2 sm:flex-row">
                         <input type="text" id="manual-qr-input" class="form-input-styled flex-1" placeholder="Paste QR payload…">
                         <button id="manual-validate-btn" class="btn btn-primary">Validate</button>
                     </div>
@@ -53,7 +53,7 @@
                         </span>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-3">
+                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <button @click="downloadSchedule()" :disabled="!isOnline" class="btn btn-outline text-xs py-2 w-full">
                             <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                             Download Schedule

@@ -1,12 +1,12 @@
 <x-layouts.app :title="'Missed Exams Report'">
     <x-slot name="header">
-        <div class="flex items-center justify-between">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
                 <h1 class="text-2xl font-bold text-gray-900">Missed Exams</h1>
                 <p class="text-gray-500 mt-1">Students who did not show up for their scheduled sessions</p>
             </div>
-            <div class="flex gap-2">
-                <form action="{{ route('admin.reports.show', 'missed-exams') }}" method="GET" class="flex gap-2">
+            <div class="flex gap-2 w-full sm:w-auto">
+                <form action="{{ route('admin.reports.show', 'missed-exams') }}" method="GET" class="flex gap-2 w-full sm:w-auto">
                     <select name="exam_id" class="form-input-styled text-sm py-1.5" onchange="this.form.submit()">
                         <option value="">Select Exam...</option>
                         @foreach(\App\Models\Exam::with('course')->get() as $e)

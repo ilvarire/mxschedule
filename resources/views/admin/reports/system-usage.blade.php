@@ -1,6 +1,6 @@
 <x-layouts.app :title="'System Usage Report'">
     <x-slot name="header">
-        <div class="flex items-center justify-between">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
                 <h1 class="text-2xl font-bold text-gray-900">System Usage Report</h1>
                 <p class="text-gray-500 mt-1">Real-time health and availability of CBT infrastructure</p>

@@ -1,7 +1,7 @@
 <x-layouts.app :title="'Allocations'">
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div class="flex items-start gap-3">
                 <a href="{{ route('admin.exams.show', $exam) }}" class="text-gray-400 hover:text-gray-600"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></a>
                 <div>
                     <h1 class="text-2xl font-bold text-gray-900">Allocations — {{ $exam->course->code }}</h1>

@@ -12,7 +12,7 @@
                 <h3 class="text-lg font-semibold mb-3 {{ $r['success'] ? 'text-green-700' : 'text-red-700' }}">
                     {{ $r['success'] ? '✓ Import Complete' : '✗ Import Failed' }}
                 </h3>
-                <div class="grid grid-cols-3 gap-4 mb-4">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                     <div class="text-center p-3 bg-green-50 rounded-lg">
                         <div class="text-2xl font-bold text-green-700">{{ $r['imported'] }}</div>
                         <div class="text-xs text-green-600">New Records</div>
@@ -64,7 +64,7 @@
                         </select>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="form-label">Academic Session</label>
                             <input type="text" name="academic_session" value="2025/2026" class="form-input-styled" required>

@@ -24,7 +24,7 @@
                         @error('course_id') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
                     </div>
 
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="form-label">Academic Session</label>
                             <input type="text" name="academic_session" value="{{ old('academic_session', \App\Models\Setting::getValue('academic_session', '2025/2026')) }}" class="form-input-styled" placeholder="e.g. 2025/2026" required>
@@ -38,7 +38,7 @@
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="form-label">Exam Date</label>
                             <input type="date" name="exam_date" value="{{ old('exam_date') }}" class="form-input-styled" required>
@@ -50,7 +50,7 @@
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="form-label">Duration (minutes)</label>
                             <input type="number" name="duration_minutes" value="{{ old('duration_minutes', 60) }}" class="form-input-styled" min="15" max="300" required>

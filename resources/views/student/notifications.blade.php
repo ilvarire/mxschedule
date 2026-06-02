@@ -1,6 +1,6 @@
 <x-layouts.app :title="'My Notifications'">
     <x-slot name="header">
-        <div class="flex items-center justify-between">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
                 <h1 class="text-2xl font-bold text-gray-900">Notifications</h1>
                 <p class="text-sm text-gray-500 mt-1">Your exam schedule alerts and updates</p>
@@ -17,7 +17,7 @@
     <div class="space-y-3 max-w-2xl">
         @forelse($notifications as $notification)
         @php $isUnread = is_null($notification->read_at); @endphp
-        <div class="card p-4 flex items-start gap-4 {{ $isUnread ? 'border-l-4 border-indigo-500' : '' }}">
+        <div class="card p-4 flex flex-wrap items-start gap-4 {{ $isUnread ? 'border-l-4 border-indigo-500' : '' }}">
             {{-- Icon --}}
             <div class="shrink-0 w-10 h-10 rounded-full flex items-center justify-center {{ $isUnread ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-400' }}">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -39,7 +39,7 @@
             </div>
 
             {{-- Actions --}}
-            <div class="flex items-center gap-2 shrink-0">
+            <div class="flex flex-wrap items-center gap-2 shrink-0">
                 @if(isset($notification->data['allocation_id']))
                 <a href="{{ route('student.exam-pass.show', $notification->data['allocation_id']) }}"
                    class="text-xs font-medium text-indigo-600 hover:text-indigo-900">View Pass</a>

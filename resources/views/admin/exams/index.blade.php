@@ -1,6 +1,6 @@
 <x-layouts.app :title="'Exams'">
     <x-slot name="header">
-        <div class="flex items-center justify-between">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
                 <h1 class="text-2xl font-bold text-gray-900">Examinations</h1>
                 <p class="text-sm text-gray-500 mt-1">Create exams and generate schedules</p>
