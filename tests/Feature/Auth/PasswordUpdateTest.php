@@ -74,7 +74,29 @@ test('current password is validated without javascript', function () {
 
     $response
         ->assertRedirect(route('profile'))
-        ->assertSessionHasErrors('current_password');
+        ->assertSessionHasErrors('current_password', null, 'updatePassword');
 
     $this->assertTrue(Hash::check('password', $user->refresh()->password));
+});
+
+test('password validation errors do not open the delete account modal', function () {
+    $user = User::factory()->create();
+
+    $response = $this
+        ->actingAs($user)
+        ->from(route('profile'))
+        ->patch(route('profile.password.update'), [
+            'current_password' => 'wrong-password',
+            'password' => 'new-password',
+            'password_confirmation' => 'new-password',
+        ]);
+
+    $response->assertRedirect(route('profile'));
+
+    $this
+        ->followingRedirects()
+        ->actingAs($user)
+        ->get(route('profile'))
+        ->assertOk()
+        ->assertSee('style="display: none;"', false);
 });

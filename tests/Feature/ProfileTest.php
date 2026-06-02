@@ -15,6 +15,7 @@ test('profile page is displayed', function () {
         ->assertSee('aria-label="Open navigation"', false)
         ->assertSee('action="'.route('profile.password.update').'"', false)
         ->assertSee('name="_method" value="PATCH"', false)
+        ->assertSee('value="'.$user->email.'"', false)
         ->assertSeeVolt('profile.update-profile-information-form')
         ->assertSeeVolt('profile.update-password-form')
         ->assertSeeVolt('profile.delete-user-form');
