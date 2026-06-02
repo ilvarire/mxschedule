@@ -41,3 +41,40 @@ test('correct password must be provided to update password', function () {
         ->assertHasErrors(['current_password'])
         ->assertNoRedirect();
 });
+
+test('password can be updated without javascript', function () {
+    $user = User::factory()->create();
+
+    $response = $this
+        ->actingAs($user)
+        ->patch(route('profile.password.update'), [
+            'current_password' => 'password',
+            'password' => 'new-password',
+            'password_confirmation' => 'new-password',
+        ]);
+
+    $response
+        ->assertRedirect()
+        ->assertSessionHas('password_status', 'Password updated successfully.');
+
+    $this->assertTrue(Hash::check('new-password', $user->refresh()->password));
+});
+
+test('current password is validated without javascript', function () {
+    $user = User::factory()->create();
+
+    $response = $this
+        ->actingAs($user)
+        ->from(route('profile'))
+        ->patch(route('profile.password.update'), [
+            'current_password' => 'wrong-password',
+            'password' => 'new-password',
+            'password_confirmation' => 'new-password',
+        ]);
+
+    $response
+        ->assertRedirect(route('profile'))
+        ->assertSessionHasErrors('current_password');
+
+    $this->assertTrue(Hash::check('password', $user->refresh()->password));
+});

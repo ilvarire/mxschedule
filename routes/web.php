@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin;
 use App\Http\Controllers\Student;
 use App\Http\Controllers\Api;
+use App\Http\Controllers\Auth\PasswordController;
 use Illuminate\Support\Facades\Route;
 
 // ── Public ──────────────────────────────────────
@@ -30,6 +31,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Profile (Breeze default)
     Route::view('profile', 'profile')->name('profile');
+    Route::patch('profile/password', [PasswordController::class, 'update'])->name('profile.password.update');
 
     // ── Admin Routes ────────────────────────────
     Route::prefix('admin')

@@ -52,10 +52,13 @@ new class extends Component
         </p>
     </header>
 
-    <form wire:submit="updatePassword" class="mt-6 space-y-6">
-        @if ($password_updated)
+    <form wire:submit="updatePassword" method="POST" action="{{ route('profile.password.update') }}" class="mt-6 space-y-6">
+        @csrf
+        @method('PATCH')
+
+        @if ($password_updated || session('password_status'))
             <div class="flash-success" role="status">
-                {{ __('Password updated successfully.') }}
+                {{ session('password_status', __('Password updated successfully.')) }}
             </div>
         @endif
 
