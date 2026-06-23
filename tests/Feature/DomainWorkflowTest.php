@@ -18,10 +18,12 @@ use App\Services\ReallocationService;
 use App\Services\SchedulingEngine;
 use App\Services\ExamPassService;
 use App\Jobs\SendScheduleNotificationsJob;
+use App\Notifications\ExamReminderNotification;
 use App\Notifications\ReallocationAttentionRequiredNotification;
 use App\Notifications\ScheduleReleasedNotification;
 use App\Notifications\StudentReallocatedNotification;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Spatie\Permission\Models\Role;
 
@@ -207,4 +209,37 @@ test('schedule notification job sends exam emails', function () {
         return $notification->allocation->is($allocation)
             && $notification->exam->is($allocation->examSession->exam);
     });
+});
+
+test('scheduled reminder command sends each reminder once', function () {
+    Notification::fake();
+    $fixture = domainFixture();
+    $allocation = createAllocation($fixture, now()->addHours(23), now()->addHours(24));
+
+    $this->artisan('exam:send-reminders')->assertSuccessful();
+    $this->artisan('exam:send-reminders')->assertSuccessful();
+
+    Notification::assertSentToTimes($fixture['user'], ExamReminderNotification::class, 1);
+    Notification::assertSentTo($fixture['user'], ExamReminderNotification::class, function ($notification) use ($allocation) {
+        return $notification->allocation->is($allocation)
+            && $notification->hoursBefore === 24;
+    });
+
+    expect(DB::table('exam_reminder_logs')
+        ->where('exam_allocation_id', $allocation->id)
+        ->where('hours_before', 24)
+        ->count())->toBe(1);
+});
+
+test('scheduled reminder dry run does not reserve reminder logs', function () {
+    Notification::fake();
+    $fixture = domainFixture();
+    $allocation = createAllocation($fixture, now()->addMinutes(45), now()->addHours(2));
+
+    $this->artisan('exam:send-reminders --dry-run')->assertSuccessful();
+
+    Notification::assertNothingSent();
+    expect(DB::table('exam_reminder_logs')
+        ->where('exam_allocation_id', $allocation->id)
+        ->count())->toBe(0);
 });

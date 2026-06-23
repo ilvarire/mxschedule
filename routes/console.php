@@ -9,3 +9,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('exam:sync-lifecycle')->everyMinute()->withoutOverlapping();
+Schedule::command('exam:send-reminders')->everyFiveMinutes()->withoutOverlapping();

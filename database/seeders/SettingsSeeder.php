@@ -16,6 +16,7 @@ class SettingsSeeder extends Seeder
             'academic_session' => '2025/2026',
             'current_semester' => 'first',
             'pass_grace_minutes' => '5',
+            'exam_reminder_hours' => '24,1',
         ];
 
         foreach ($defaults as $key => $value) {
