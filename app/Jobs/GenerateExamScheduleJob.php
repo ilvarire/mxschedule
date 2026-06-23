@@ -29,7 +29,6 @@ class GenerateExamScheduleJob implements ShouldQueue
         ?int $userId = null,
     ) {
         $this->userId = $userId ?? auth()->id() ?? 1;
-        $this->onQueue('scheduling');
     }
 
     public function handle(SchedulingEngine $engine): void

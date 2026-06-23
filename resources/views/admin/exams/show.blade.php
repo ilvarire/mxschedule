@@ -12,6 +12,26 @@
         </div>
     </x-slot>
 
+    @if($exam->status === \App\Enums\ExamStatus::Scheduling)
+        <div class="mb-6 rounded-xl border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-900">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                    <p class="font-semibold">Schedule generation is running or waiting in the queue.</p>
+                    <p class="mt-1 text-yellow-800">
+                        This page will refresh automatically. If it stays here for several minutes, the queue worker is probably not running on the server.
+                    </p>
+                </div>
+                <div class="inline-flex items-center gap-2 rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-800">
+                    <svg class="h-3 w-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                    </svg>
+                    Scheduling
+                </div>
+            </div>
+        </div>
+    @endif
+
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         <!-- Info Card -->
         <div class="card">
@@ -21,6 +41,9 @@
                 <div class="flex justify-between"><span class="text-gray-500">Duration</span><span class="font-semibold">{{ $exam->duration_minutes }} min</span></div>
                 <div class="flex justify-between"><span class="text-gray-500">Buffer</span><span class="font-semibold">{{ $exam->buffer_minutes }} min</span></div>
                 <div class="flex justify-between"><span class="text-gray-500">Sessions</span><span class="font-semibold">{{ $exam->sessions->count() }}</span></div>
+                @if($exam->status === \App\Enums\ExamStatus::Scheduling)
+                <div class="flex justify-between"><span class="text-gray-500">Queue Status</span><span class="font-semibold text-yellow-700">Waiting/processing</span></div>
+                @endif
                 @if($exam->scheduled_at)
                 <div class="flex justify-between"><span class="text-gray-500">Scheduled</span><span class="font-semibold">{{ $exam->scheduled_at->diffForHumans() }}</span></div>
                 @endif
@@ -42,6 +65,18 @@
                             Generate Schedule
                         </button>
                     </form>
+                @endif
+                @if($exam->status === \App\Enums\ExamStatus::Scheduling)
+                    <button type="button" class="btn btn-secondary w-full opacity-75 cursor-not-allowed" disabled>
+                        <svg class="w-4 h-4 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                        </svg>
+                        Schedule Generation In Progress
+                    </button>
+                    <p class="text-xs text-gray-500">
+                        Waiting for the queue worker to process the scheduling job.
+                    </p>
                 @endif
                 @if($exam->status === \App\Enums\ExamStatus::Scheduled)
                     <a href="{{ route('admin.exams.allocations', $exam) }}" class="btn btn-secondary w-full">
@@ -90,4 +125,10 @@
             </div>
         </div>
     </div>
+
+    @if($exam->status === \App\Enums\ExamStatus::Scheduling)
+        <script>
+            window.setTimeout(() => window.location.reload(), 10000);
+        </script>
+    @endif
 </x-layouts.app>

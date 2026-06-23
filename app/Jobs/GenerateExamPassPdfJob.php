@@ -23,7 +23,6 @@ class GenerateExamPassPdfJob implements ShouldQueue
     public function __construct(
         public Exam $exam,
     ) {
-        $this->onQueue('pdf');
     }
 
     public function handle(ExamPassService $passService): void

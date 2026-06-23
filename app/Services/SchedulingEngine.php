@@ -17,11 +17,13 @@ class SchedulingEngine
 {
     public function generateSchedule(Exam $exam, ?int $userId = null): void
     {
-        if (! $exam->canBeScheduled()) {
+        if (! in_array($exam->status, [ExamStatus::Draft, ExamStatus::Cancelled, ExamStatus::Scheduling], true)) {
             throw new \RuntimeException("Exam #{$exam->id} cannot be scheduled in its current state ({$exam->status->value}).");
         }
 
-        $exam->update(['status' => ExamStatus::Scheduling]);
+        if ($exam->status !== ExamStatus::Scheduling) {
+            $exam->update(['status' => ExamStatus::Scheduling]);
+        }
 
         try {
             DB::transaction(fn () => $this->executeScheduling($exam, $userId));
@@ -109,7 +111,7 @@ class SchedulingEngine
             'total_registered_students' => $students->count(),
         ]);
 
-        SendScheduleNotificationsJob::dispatch($exam)->onQueue('notifications');
+        SendScheduleNotificationsJob::dispatch($exam);
     }
 
     protected function getRegisteredStudents(Exam $exam): Collection

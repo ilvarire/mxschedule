@@ -22,7 +22,6 @@ class SendScheduleNotificationsJob implements ShouldQueue
     public function __construct(
         public Exam $exam,
     ) {
-        $this->onQueue('notifications');
     }
 
     public function handle(): void

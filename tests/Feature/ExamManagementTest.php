@@ -1,12 +1,16 @@
 <?php
 
 use App\Enums\ExamStatus;
+use App\Jobs\GenerateExamScheduleJob;
 use App\Models\Course;
 use App\Models\Department;
 use App\Models\Exam;
 use App\Models\Faculty;
+use App\Models\Hall;
 use App\Models\StudentProfile;
+use App\Models\System as ComputerSystem;
 use App\Models\User;
+use Illuminate\Support\Facades\Queue;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
@@ -142,4 +146,59 @@ test('exam creation counts students enrolled for the same course session and sem
     expect($exam->total_registered_students)->toBe(1)
         ->and($exam->academic_session)->toBe('2025/2026')
         ->and($exam->semester->value)->toBe('second');
+});
+
+test('schedule generation immediately marks exam as scheduling while queued', function () {
+    Queue::fake();
+
+    $permission = Permission::firstOrCreate(['name' => 'trigger_scheduling', 'guard_name' => 'web']);
+    $role = Role::firstOrCreate(['name' => 'exam_officer', 'guard_name' => 'web']);
+    $role->givePermissionTo($permission);
+    $admin = User::factory()->create();
+    $admin->assignRole($role);
+
+    $course = examManagementCourse();
+    $studentUser = User::factory()->create();
+    $profile = StudentProfile::create([
+        'user_id' => $studentUser->id,
+        'matric_number' => 'MTH/2026/002',
+        'department_id' => $course->department_id,
+        'level' => 300,
+    ]);
+    $profile->courses()->attach($course->id, [
+        'academic_session' => '2025/2026',
+        'semester' => 'first',
+    ]);
+
+    $hall = Hall::create(['name' => 'Main CBT', 'code' => 'MCBT', 'capacity' => 10, 'is_active' => true]);
+    ComputerSystem::create(['hall_id' => $hall->id, 'system_code' => 'MCBT01', 'status' => 'active']);
+
+    $exam = Exam::create([
+        'course_id' => $course->id,
+        'academic_session' => '2025/2026',
+        'semester' => 'first',
+        'exam_date' => now()->addWeek()->toDateString(),
+        'start_time' => '09:00',
+        'duration_minutes' => 60,
+        'buffer_minutes' => 15,
+        'status' => ExamStatus::Draft,
+        'total_registered_students' => 1,
+    ]);
+
+    $this
+        ->actingAs($admin)
+        ->post(route('admin.exams.schedule', $exam))
+        ->assertRedirect()
+        ->assertSessionHas('success');
+
+    expect($exam->refresh()->status)->toBe(ExamStatus::Scheduling);
+
+    Queue::assertPushed(GenerateExamScheduleJob::class);
+
+    $this
+        ->actingAs($admin)
+        ->get(route('admin.exams.show', $exam))
+        ->assertOk()
+        ->assertSee('Schedule generation is running or waiting in the queue')
+        ->assertSee('Schedule Generation In Progress');
 });
