@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\ExamStatus;
 use App\Enums\Semester;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -58,6 +59,13 @@ class Exam extends Model
     public function allocations()
     {
         return $this->hasManyThrough(ExamAllocation::class, ExamSession::class);
+    }
+
+    protected function startTime(): Attribute
+    {
+        return Attribute::make(
+            get: fn (?string $value) => $value ? substr($value, 0, 5) : null,
+        );
     }
 
     /**

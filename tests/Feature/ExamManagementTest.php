@@ -71,3 +71,36 @@ test('exam edit validation errors are visible after failed save', function () {
         ->assertSee('Please fix the following issue')
         ->assertSee('academic session field is required', false);
 });
+
+test('exam edit accepts database-style start time with seconds', function () {
+    $admin = examManagementAdmin();
+    $course = examManagementCourse();
+    $exam = Exam::create([
+        'course_id' => $course->id,
+        'academic_session' => '2025/2026',
+        'semester' => 'first',
+        'exam_date' => now()->addWeek()->toDateString(),
+        'start_time' => '09:00:00',
+        'duration_minutes' => 60,
+        'buffer_minutes' => 15,
+        'status' => ExamStatus::Draft,
+    ]);
+
+    $response = $this
+        ->actingAs($admin)
+        ->put(route('admin.exams.update', $exam), [
+            'course_id' => $course->id,
+            'academic_session' => '2025/2026',
+            'semester' => 'first',
+            'exam_date' => now()->addWeek()->toDateString(),
+            'start_time' => '09:00:00',
+            'duration_minutes' => 90,
+            'buffer_minutes' => 15,
+        ]);
+
+    $response
+        ->assertRedirect(route('admin.exams.show', $exam))
+        ->assertSessionHasNoErrors();
+
+    expect($exam->refresh()->start_time)->toBe('09:00');
+});

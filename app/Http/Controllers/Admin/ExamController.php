@@ -29,6 +29,8 @@ class ExamController extends Controller
 
     public function store(Request $request)
     {
+        $this->normalizeTimeInput($request);
+
         $validated = $request->validate([
             'course_id' => 'required|exists:courses,id',
             'academic_session' => 'required|string|max:20',
@@ -79,6 +81,7 @@ class ExamController extends Controller
     public function update(Request $request, Exam $exam)
     {
         $this->authorize('update', $exam);
+        $this->normalizeTimeInput($request);
 
         $validated = $request->validate([
             'course_id' => 'required|exists:courses,id',
@@ -105,5 +108,14 @@ class ExamController extends Controller
 
         return redirect()->route('admin.exams.index')
             ->with('success', 'Exam deleted.');
+    }
+
+    protected function normalizeTimeInput(Request $request): void
+    {
+        if ($request->filled('start_time')) {
+            $request->merge([
+                'start_time' => substr((string) $request->input('start_time'), 0, 5),
+            ]);
+        }
     }
 }
