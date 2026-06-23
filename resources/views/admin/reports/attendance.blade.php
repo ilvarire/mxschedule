@@ -23,8 +23,8 @@
         <div class="card-body">
             <form method="GET" class="flex gap-4 items-end">
                 <div class="flex-1">
-                    <label class="form-label">Select Exam</label>
-                    <select name="exam_id" class="form-input-styled" onchange="this.form.submit()">
+                    <label for="exam_id" class="form-label">Select Exam</label>
+                    <select id="exam_id" name="exam_id" class="form-input-styled" onchange="this.form.submit()">
                         <option value="">Choose an exam…</option>
                         @foreach(\App\Models\Exam::with('course')->latest('exam_date')->get() as $e)
                             <option value="{{ $e->id }}" {{ request('exam_id') == $e->id ? 'selected' : '' }}>

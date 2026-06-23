@@ -12,8 +12,8 @@
                 <form action="{{ route('admin.exams.store') }}" method="POST" class="space-y-5">
                     @csrf
                     <div>
-                        <label class="form-label">Course</label>
-                        <select name="course_id" class="form-input-styled" required>
+                        <label for="course_id" class="form-label">Course</label>
+                        <select id="course_id" name="course_id" class="form-input-styled" required>
                             <option value="">Select a course…</option>
                             @foreach($courses as $course)
                                 <option value="{{ $course->id }}" {{ old('course_id') == $course->id ? 'selected' : '' }}>
@@ -26,12 +26,12 @@
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label class="form-label">Academic Session</label>
-                            <input type="text" name="academic_session" value="{{ old('academic_session', \App\Models\Setting::getValue('academic_session', '2025/2026')) }}" class="form-input-styled" placeholder="e.g. 2025/2026" required>
+                            <label for="academic_session" class="form-label">Academic Session</label>
+                            <input id="academic_session" type="text" name="academic_session" value="{{ old('academic_session', \App\Models\Setting::getValue('academic_session', '2025/2026')) }}" class="form-input-styled" placeholder="e.g. 2025/2026" required>
                         </div>
                         <div>
-                            <label class="form-label">Semester</label>
-                            <select name="semester" class="form-input-styled" required>
+                            <label for="semester" class="form-label">Semester</label>
+                            <select id="semester" name="semester" class="form-input-styled" required>
                                 <option value="first" {{ old('semester', \App\Models\Setting::getValue('current_semester', 'first')) === 'first' ? 'selected' : '' }}>First</option>
                                 <option value="second" {{ old('semester') === 'second' ? 'selected' : '' }}>Second</option>
                             </select>
@@ -40,30 +40,30 @@
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label class="form-label">Exam Date</label>
-                            <input type="date" name="exam_date" value="{{ old('exam_date') }}" class="form-input-styled" required>
+                            <label for="exam_date" class="form-label">Exam Date</label>
+                            <input id="exam_date" type="date" name="exam_date" value="{{ old('exam_date') }}" class="form-input-styled" required>
                             @error('exam_date') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
                         </div>
                         <div>
-                            <label class="form-label">Start Time</label>
-                            <input type="time" name="start_time" value="{{ old('start_time', '09:00') }}" class="form-input-styled" required>
+                            <label for="start_time" class="form-label">Start Time</label>
+                            <input id="start_time" type="time" name="start_time" value="{{ old('start_time', '09:00') }}" class="form-input-styled" required>
                         </div>
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label class="form-label">Duration (minutes)</label>
-                            <input type="number" name="duration_minutes" value="{{ old('duration_minutes', 60) }}" class="form-input-styled" min="15" max="300" required>
+                            <label for="duration_minutes" class="form-label">Duration (minutes)</label>
+                            <input id="duration_minutes" type="number" name="duration_minutes" value="{{ old('duration_minutes', 60) }}" class="form-input-styled" min="15" max="300" required>
                         </div>
                         <div>
-                            <label class="form-label">Buffer Between Sessions (min)</label>
-                            <input type="number" name="buffer_minutes" value="{{ old('buffer_minutes', 15) }}" class="form-input-styled" min="5" max="60" required>
+                            <label for="buffer_minutes" class="form-label">Buffer Between Sessions (min)</label>
+                            <input id="buffer_minutes" type="number" name="buffer_minutes" value="{{ old('buffer_minutes', 15) }}" class="form-input-styled" min="5" max="60" required>
                         </div>
                     </div>
 
                     <div>
-                        <label class="form-label">Notes <span class="text-gray-400">(optional)</span></label>
-                        <textarea name="notes" rows="3" class="form-input-styled" placeholder="Any special instructions…">{{ old('notes') }}</textarea>
+                        <label for="notes" class="form-label">Notes <span class="text-gray-400">(optional)</span></label>
+                        <textarea id="notes" name="notes" rows="3" class="form-input-styled" placeholder="Any special instructions…">{{ old('notes') }}</textarea>
                     </div>
 
                     <div class="flex justify-end gap-3 pt-4">

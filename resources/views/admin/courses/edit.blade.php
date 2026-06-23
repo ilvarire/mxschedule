@@ -20,7 +20,7 @@
                     
                     <div>
                         <x-input-label for="department_id" value="Department" />
-                        <select id="department_id" name="department_id" class="form-select mt-1" required>
+                        <select id="department_id" name="department_id" class="form-input-styled mt-1" required>
                             <option value="">Select a department...</option>
                             @foreach($departments as $dept)
                                 <option value="{{ $dept->id }}" {{ old('department_id', $course->department_id) == $dept->id ? 'selected' : '' }}>

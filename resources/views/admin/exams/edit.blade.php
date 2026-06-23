@@ -12,8 +12,8 @@
                 <form action="{{ route('admin.exams.update', $exam) }}" method="POST" class="space-y-5">
                     @csrf @method('PUT')
                     <div>
-                        <label class="form-label">Course</label>
-                        <select name="course_id" class="form-input-styled" required>
+                        <label for="course_id" class="form-label">Course</label>
+                        <select id="course_id" name="course_id" class="form-input-styled" required>
                             @foreach($courses as $course)
                                 <option value="{{ $course->id }}" {{ old('course_id', $exam->course_id) == $course->id ? 'selected' : '' }}>
                                     {{ $course->code }} — {{ $course->title }}
@@ -23,12 +23,12 @@
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label class="form-label">Academic Session</label>
-                            <input type="text" name="academic_session" value="{{ old('academic_session', $exam->academic_session) }}" class="form-input-styled" required>
+                            <label for="academic_session" class="form-label">Academic Session</label>
+                            <input id="academic_session" type="text" name="academic_session" value="{{ old('academic_session', $exam->academic_session) }}" class="form-input-styled" required>
                         </div>
                         <div>
-                            <label class="form-label">Semester</label>
-                            <select name="semester" class="form-input-styled" required>
+                            <label for="semester" class="form-label">Semester</label>
+                            <select id="semester" name="semester" class="form-input-styled" required>
                                 <option value="first" {{ old('semester', $exam->semester->value) === 'first' ? 'selected' : '' }}>First</option>
                                 <option value="second" {{ old('semester', $exam->semester->value) === 'second' ? 'selected' : '' }}>Second</option>
                             </select>
@@ -36,27 +36,27 @@
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label class="form-label">Exam Date</label>
-                            <input type="date" name="exam_date" value="{{ old('exam_date', $exam->exam_date->format('Y-m-d')) }}" class="form-input-styled" required>
+                            <label for="exam_date" class="form-label">Exam Date</label>
+                            <input id="exam_date" type="date" name="exam_date" value="{{ old('exam_date', $exam->exam_date->format('Y-m-d')) }}" class="form-input-styled" required>
                         </div>
                         <div>
-                            <label class="form-label">Start Time</label>
-                            <input type="time" name="start_time" value="{{ old('start_time', $exam->start_time) }}" class="form-input-styled" required>
+                            <label for="start_time" class="form-label">Start Time</label>
+                            <input id="start_time" type="time" name="start_time" value="{{ old('start_time', $exam->start_time) }}" class="form-input-styled" required>
                         </div>
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label class="form-label">Duration (minutes)</label>
-                            <input type="number" name="duration_minutes" value="{{ old('duration_minutes', $exam->duration_minutes) }}" class="form-input-styled" min="15" max="300" required>
+                            <label for="duration_minutes" class="form-label">Duration (minutes)</label>
+                            <input id="duration_minutes" type="number" name="duration_minutes" value="{{ old('duration_minutes', $exam->duration_minutes) }}" class="form-input-styled" min="15" max="300" required>
                         </div>
                         <div>
-                            <label class="form-label">Buffer (minutes)</label>
-                            <input type="number" name="buffer_minutes" value="{{ old('buffer_minutes', $exam->buffer_minutes) }}" class="form-input-styled" min="5" max="60" required>
+                            <label for="buffer_minutes" class="form-label">Buffer (minutes)</label>
+                            <input id="buffer_minutes" type="number" name="buffer_minutes" value="{{ old('buffer_minutes', $exam->buffer_minutes) }}" class="form-input-styled" min="5" max="60" required>
                         </div>
                     </div>
                     <div>
-                        <label class="form-label">Notes</label>
-                        <textarea name="notes" rows="3" class="form-input-styled">{{ old('notes', $exam->notes) }}</textarea>
+                        <label for="notes" class="form-label">Notes</label>
+                        <textarea id="notes" name="notes" rows="3" class="form-input-styled">{{ old('notes', $exam->notes) }}</textarea>
                     </div>
                     <div class="flex justify-end gap-3 pt-4">
                         <a href="{{ route('admin.exams.show', $exam) }}" class="btn btn-secondary">Cancel</a>

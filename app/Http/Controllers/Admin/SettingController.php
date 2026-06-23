@@ -23,6 +23,7 @@ class SettingController extends Controller
             'settings.pass_grace_minutes' => 'required|integer|min:0|max:120',
             'settings.academic_session' => 'required|string|max:20',
             'settings.current_semester' => 'required|in:first,second',
+            'settings.exam_reminder_hours' => ['required', 'string', 'max:50', 'regex:/^\d+(,\d+)*$/'],
         ]);
 
         foreach ($validated['settings'] as $key => $value) {

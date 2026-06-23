@@ -22,7 +22,7 @@
                         <td>
                             <form action="{{ route('admin.systems.update-status', $system) }}" method="POST" class="inline-flex items-center gap-2">
                                 @csrf @method('PATCH')
-                                <select name="status" class="form-input-styled text-xs py-1 w-24">
+                                <select name="status" class="form-input-styled text-xs py-1 w-24" aria-label="System status for {{ $system->system_code }}">
                                     <option value="active" {{ $system->status->value === 'active' ? 'selected' : '' }}>Active</option>
                                     <option value="inactive" {{ $system->status->value === 'inactive' ? 'selected' : '' }}>Inactive</option>
                                     <option value="faulty" {{ $system->status->value === 'faulty' ? 'selected' : '' }}>Faulty</option>

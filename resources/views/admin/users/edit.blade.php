@@ -9,27 +9,27 @@
     <div class="max-w-2xl">
         <div class="card">
             <div class="card-body">
-                <form action="{{ route('admin.users.update', $user) }}" method="POST" class="space-y-5">
+                <form id="update-user-form" action="{{ route('admin.users.update', $user) }}" method="POST" class="space-y-5">
                     @csrf @method('PUT')
                     <div>
-                        <label class="form-label">Full Name</label>
-                        <input type="text" name="name" value="{{ old('name', $user->name) }}" class="form-input-styled" required>
+                        <label for="name" class="form-label">Full Name</label>
+                        <input id="name" type="text" name="name" value="{{ old('name', $user->name) }}" class="form-input-styled" required>
                         @error('name') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label class="form-label">Email</label>
-                            <input type="email" name="email" value="{{ old('email', $user->email) }}" class="form-input-styled" required>
+                            <label for="email" class="form-label">Email</label>
+                            <input id="email" type="email" name="email" value="{{ old('email', $user->email) }}" class="form-input-styled" required>
                             @error('email') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
                         </div>
                         <div>
-                            <label class="form-label">Phone</label>
-                            <input type="text" name="phone" value="{{ old('phone', $user->phone) }}" class="form-input-styled">
+                            <label for="phone" class="form-label">Phone</label>
+                            <input id="phone" type="text" name="phone" value="{{ old('phone', $user->phone) }}" class="form-input-styled">
                         </div>
                     </div>
                     <div>
-                        <label class="form-label">Role</label>
-                        <select name="role" class="form-input-styled" required>
+                        <label for="role" class="form-label">Role</label>
+                        <select id="role" name="role" class="form-input-styled" required>
                             @foreach($roles as $role)
                                 <option value="{{ $role->name }}" {{ $user->hasRole($role->name) ? 'selected' : '' }}>{{ ucwords(str_replace('_', ' ', $role->name)) }}</option>
                             @endforeach
@@ -40,15 +40,16 @@
                         <label for="is_active" class="text-sm text-gray-700">Account is active</label>
                     </div>
                     <div class="flex justify-between pt-4">
-                        <form action="{{ route('admin.users.destroy', $user) }}" method="POST" onsubmit="return confirm('Delete this user?')">
-                            @csrf @method('DELETE')
-                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
-                        </form>
+                        <button type="submit" form="delete-user-form" class="btn btn-danger btn-sm" onclick="return confirm('Delete this user?')">Delete</button>
                         <div class="flex gap-3">
                             <a href="{{ route('admin.users.index') }}" class="btn btn-secondary">Cancel</a>
                             <button type="submit" class="btn btn-primary">Save Changes</button>
                         </div>
                     </div>
+                </form>
+                <form id="delete-user-form" action="{{ route('admin.users.destroy', $user) }}" method="POST" class="hidden">
+                    @csrf
+                    @method('DELETE')
                 </form>
             </div>
         </div>

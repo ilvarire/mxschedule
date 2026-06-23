@@ -5,6 +5,7 @@ namespace Tests\Feature\Auth;
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Password;
 use Livewire\Volt\Volt;
 
 test('reset password link screen can be rendered', function () {
@@ -66,6 +67,7 @@ test('password can be reset with valid token', function () {
 
         $component
             ->assertRedirect('/login')
+            ->assertSessionHas('status', __(Password::PASSWORD_RESET))
             ->assertHasNoErrors();
 
         return true;

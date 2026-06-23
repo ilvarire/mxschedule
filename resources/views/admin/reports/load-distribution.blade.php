@@ -7,7 +7,7 @@
             </div>
             <div class="flex gap-2 w-full sm:w-auto">
                 <form action="{{ route('admin.reports.show', 'load-distribution') }}" method="GET" class="flex gap-2 w-full sm:w-auto">
-                    <select name="exam_id" class="form-input-styled text-sm py-1.5" onchange="this.form.submit()">
+                    <select name="exam_id" class="form-input-styled text-sm py-1.5" onchange="this.form.submit()" aria-label="Select exam for load distribution report">
                         <option value="">Select Exam...</option>
                         @foreach(\App\Models\Exam::with('course')->upcoming()->get() as $e)
                             <option value="{{ $e->id }}" {{ request('exam_id') == $e->id ? 'selected' : '' }}>

@@ -7,7 +7,7 @@
             </div>
             <div class="flex gap-2 w-full sm:w-auto">
                 <form action="{{ route('admin.reports.show', 'missed-exams') }}" method="GET" class="flex gap-2 w-full sm:w-auto">
-                    <select name="exam_id" class="form-input-styled text-sm py-1.5" onchange="this.form.submit()">
+                    <select name="exam_id" class="form-input-styled text-sm py-1.5" onchange="this.form.submit()" aria-label="Select exam for missed exams report">
                         <option value="">Select Exam...</option>
                         @foreach(\App\Models\Exam::with('course')->get() as $e)
                             <option value="{{ $e->id }}" {{ request('exam_id') == $e->id ? 'selected' : '' }}>
@@ -58,7 +58,7 @@
                                     <form action="{{ route('admin.reallocate') }}" method="POST">
                                         @csrf
                                         <input type="hidden" name="allocation_id" value="{{ $alloc->id }}">
-                                        <select name="new_system_id" class="form-input-styled text-xs mb-1" required>
+                                        <select name="new_system_id" class="form-input-styled text-xs mb-1" required aria-label="Select replacement system for {{ $alloc->studentProfile->user->name }}">
                                             <option value="">Select system...</option>
                                             @foreach(\App\Models\System::naturalSort(\App\Models\System::available()->get()) as $system)
                                                 <option value="{{ $system->id }}">{{ $system->system_code }}</option>

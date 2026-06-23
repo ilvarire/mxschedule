@@ -57,8 +57,8 @@
 
                     {{-- Import Type --}}
                     <div>
-                        <label class="form-label">Import Type</label>
-                        <select name="import_type" class="form-input-styled" onchange="toggleInfo(this.value)">
+                        <label for="import_type" class="form-label">Import Type</label>
+                        <select id="import_type" name="import_type" class="form-input-styled" onchange="toggleInfo(this.value)">
                             <option value="students">Students (full import)</option>
                             <option value="enrollments">Course Enrollments (existing students)</option>
                         </select>
@@ -66,12 +66,12 @@
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label class="form-label">Academic Session</label>
-                            <input type="text" name="academic_session" value="2025/2026" class="form-input-styled" required>
+                            <label for="academic_session" class="form-label">Academic Session</label>
+                            <input id="academic_session" type="text" name="academic_session" value="2025/2026" class="form-input-styled" required>
                         </div>
                         <div>
-                            <label class="form-label">Semester</label>
-                            <select name="semester" class="form-input-styled" required>
+                            <label for="semester" class="form-label">Semester</label>
+                            <select id="semester" name="semester" class="form-input-styled" required>
                                 <option value="first">First Semester</option>
                                 <option value="second">Second Semester</option>
                             </select>
@@ -80,7 +80,7 @@
 
                     {{-- File Upload Zone --}}
                     <div>
-                        <label class="form-label">CSV File</label>
+                        <label for="csvFile" class="form-label">CSV File</label>
                         <div id="dropZone"
                              class="relative border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-indigo-400 hover:bg-indigo-50/50 transition-all cursor-pointer"
                              onclick="document.getElementById('csvFile').click()">
@@ -131,7 +131,7 @@
                         <li>• <strong>courses</strong> column is optional — use pipe | to separate multiple course codes</li>
                         <li>• <strong>department_code</strong> must match an existing department code</li>
                         <li>• Existing students (by email) will be updated, not duplicated</li>
-                        <li>• Default password for new accounts is <code class="bg-gray-100 px-1 rounded">password</code></li>
+                        <li>• New students receive a secure password setup link by email</li>
                     </ul>
                 </div>
 

@@ -15,25 +15,25 @@
                 <form action="{{ route('admin.users.store') }}" method="POST" class="space-y-5">
                     @csrf
                     <div>
-                        <label class="form-label">Full Name</label>
-                        <input type="text" name="name" value="{{ old('name') }}" class="form-input-styled" required>
+                        <label for="name" class="form-label">Full Name</label>
+                        <input id="name" type="text" name="name" value="{{ old('name') }}" class="form-input-styled" required>
                         @error('name') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label class="form-label">Email</label>
-                            <input type="email" name="email" value="{{ old('email') }}" class="form-input-styled"
+                            <label for="email" class="form-label">Email</label>
+                            <input id="email" type="email" name="email" value="{{ old('email') }}" class="form-input-styled"
                                 required>
                             @error('email') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
                         </div>
                         <div>
-                            <label class="form-label">Phone</label>
-                            <input type="text" name="phone" value="{{ old('phone') }}" class="form-input-styled">
+                            <label for="phone" class="form-label">Phone</label>
+                            <input id="phone" type="text" name="phone" value="{{ old('phone') }}" class="form-input-styled">
                         </div>
                     </div>
                     <div>
-                        <label class="form-label">Role</label>
-                        <select name="role" class="form-input-styled" required>
+                        <label for="role" class="form-label">Role</label>
+                        <select id="role" name="role" class="form-input-styled" required>
                             @foreach($roles as $role)
                                 <option value="{{ $role->name }}" {{ old('role') === $role->name ? 'selected' : '' }}>
                                     {{ ucwords(str_replace('_', ' ', $role->name)) }}</option>

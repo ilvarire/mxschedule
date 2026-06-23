@@ -12,25 +12,25 @@
                 <form action="{{ route('admin.halls.store') }}" method="POST" class="space-y-5">
                     @csrf
                     <div>
-                        <label class="form-label">Hall Name</label>
-                        <input type="text" name="name" value="{{ old('name') }}" class="form-input-styled" placeholder="e.g. Computer Lab A" required>
+                        <label for="name" class="form-label">Hall Name</label>
+                        <input id="name" type="text" name="name" value="{{ old('name') }}" class="form-input-styled" placeholder="e.g. Computer Lab A" required>
                         @error('name') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label class="form-label">Hall Code</label>
-                            <input type="text" name="code" value="{{ old('code') }}" class="form-input-styled" placeholder="e.g. HA" required maxlength="10">
+                            <label for="code" class="form-label">Hall Code</label>
+                            <input id="code" type="text" name="code" value="{{ old('code') }}" class="form-input-styled" placeholder="e.g. HA" required maxlength="10">
                             @error('code') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
                         </div>
                         <div>
-                            <label class="form-label">Max Capacity</label>
-                            <input type="number" name="capacity" value="{{ old('capacity', 50) }}" class="form-input-styled" min="1" required>
+                            <label for="capacity" class="form-label">Max Capacity</label>
+                            <input id="capacity" type="number" name="capacity" value="{{ old('capacity', 50) }}" class="form-input-styled" min="1" required>
                             @error('capacity') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
                         </div>
                     </div>
                     <div>
-                        <label class="form-label">Location <span class="text-gray-400">(optional)</span></label>
-                        <input type="text" name="location" value="{{ old('location') }}" class="form-input-styled" placeholder="e.g. Building 3, Ground Floor">
+                        <label for="location" class="form-label">Location <span class="text-gray-400">(optional)</span></label>
+                        <input id="location" type="text" name="location" value="{{ old('location') }}" class="form-input-styled" placeholder="e.g. Building 3, Ground Floor">
                     </div>
                     <div class="flex justify-end gap-3 pt-4">
                         <a href="{{ route('admin.halls.index') }}" class="btn btn-secondary">Cancel</a>

@@ -23,13 +23,21 @@
             <div class="card-body">
                 <form action="{{ route('admin.systems.bulk-create', $hall) }}" method="POST" class="space-y-4">
                     @csrf
+                    @if ($errors->any())
+                        <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                            <p class="font-semibold">Please fix the issue below.</p>
+                        </div>
+                    @endif
+
                     <div>
-                        <label class="form-label">Number of Systems</label>
-                        <input type="number" name="count" value="10" class="form-input-styled" min="1" max="500" required>
+                        <label for="systems_count" class="form-label">Number of Systems</label>
+                        <input id="systems_count" type="number" name="count" value="{{ old('count', 10) }}" class="form-input-styled" min="1" max="500" required>
+                        @error('count') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
                     </div>
                     <div>
-                        <label class="form-label">Code Prefix <span class="text-gray-400">(default: {{ $hall->code }})</span></label>
-                        <input type="text" name="prefix" class="form-input-styled" placeholder="{{ $hall->code }}" maxlength="10">
+                        <label for="systems_prefix" class="form-label">Code Prefix <span class="text-gray-400">(default: {{ $hall->code }})</span></label>
+                        <input id="systems_prefix" type="text" name="prefix" value="{{ old('prefix') }}" class="form-input-styled" placeholder="{{ $hall->code }}" maxlength="10">
+                        @error('prefix') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
                     </div>
                     <button type="submit" class="btn btn-primary w-full">Bulk Create Systems</button>
                 </form>
@@ -53,7 +61,7 @@
                     <div class="flex flex-wrap gap-2 mb-6">
                         @foreach($hall->systems as $system)
                             <div x-data="{ open: false }" class="relative">
-                                <button @click="open = !open" class="system-dot {{ $system->status->value }}" title="{{ $system->system_code }}">
+                                <button type="button" @click="open = !open" class="system-dot {{ $system->status->value }}" title="{{ $system->system_code }}" aria-label="Open actions for {{ $system->system_code }}">
                                     {{ (int) preg_replace('/\D/', '', substr($system->system_code, strlen($hall->code))) }}
                                 </button>
                                 <div x-show="open" @click.away="open = false" x-transition
@@ -62,12 +70,12 @@
                                     <p class="text-xs text-gray-500 mb-3">Status: <span class="badge badge-{{ $system->status->color() }}">{{ $system->status->label() }}</span></p>
                                     <form action="{{ route('admin.systems.update-status', $system) }}" method="POST" class="space-y-2">
                                         @csrf @method('PATCH')
-                                        <select name="status" class="form-input-styled text-xs">
+                                        <select name="status" class="form-input-styled text-xs" aria-label="System status for {{ $system->system_code }}">
                                             <option value="active" {{ $system->status->value === 'active' ? 'selected' : '' }}>Active</option>
                                             <option value="inactive" {{ $system->status->value === 'inactive' ? 'selected' : '' }}>Inactive</option>
                                             <option value="faulty" {{ $system->status->value === 'faulty' ? 'selected' : '' }}>Faulty</option>
                                         </select>
-                                        <input type="text" name="reason" class="form-input-styled text-xs" placeholder="Reason (optional)">
+                                        <input type="text" name="reason" class="form-input-styled text-xs" placeholder="Reason (optional)" aria-label="Reason for status change">
                                         <button type="submit" class="btn btn-primary btn-sm w-full">Update</button>
                                     </form>
                                 </div>
