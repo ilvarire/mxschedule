@@ -11,6 +11,8 @@
             <div class="card-body">
                 <form action="{{ route('admin.halls.store') }}" method="POST" class="space-y-5">
                     @csrf
+                    <x-form-error-summary />
+
                     <div>
                         <label for="name" class="form-label">Hall Name</label>
                         <input id="name" type="text" name="name" value="{{ old('name') }}" class="form-input-styled" placeholder="e.g. Computer Lab A" required>

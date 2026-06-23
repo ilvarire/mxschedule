@@ -11,6 +11,8 @@
             <div class="card-body">
                 <form id="update-user-form" action="{{ route('admin.users.update', $user) }}" method="POST" class="space-y-5">
                     @csrf @method('PUT')
+                    <x-form-error-summary />
+
                     <div>
                         <label for="name" class="form-label">Full Name</label>
                         <input id="name" type="text" name="name" value="{{ old('name', $user->name) }}" class="form-input-styled" required>

@@ -11,6 +11,8 @@
             <div class="card-body">
                 <form action="{{ route('admin.exams.store') }}" method="POST" class="space-y-5">
                     @csrf
+                    <x-form-error-summary />
+
                     <div>
                         <label for="course_id" class="form-label">Course</label>
                         <select id="course_id" name="course_id" class="form-input-styled" required>
@@ -28,6 +30,7 @@
                         <div>
                             <label for="academic_session" class="form-label">Academic Session</label>
                             <input id="academic_session" type="text" name="academic_session" value="{{ old('academic_session', \App\Models\Setting::getValue('academic_session', '2025/2026')) }}" class="form-input-styled" placeholder="e.g. 2025/2026" required>
+                            @error('academic_session') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
                         </div>
                         <div>
                             <label for="semester" class="form-label">Semester</label>
@@ -35,6 +38,7 @@
                                 <option value="first" {{ old('semester', \App\Models\Setting::getValue('current_semester', 'first')) === 'first' ? 'selected' : '' }}>First</option>
                                 <option value="second" {{ old('semester') === 'second' ? 'selected' : '' }}>Second</option>
                             </select>
+                            @error('semester') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
                         </div>
                     </div>
 
@@ -47,6 +51,7 @@
                         <div>
                             <label for="start_time" class="form-label">Start Time</label>
                             <input id="start_time" type="time" name="start_time" value="{{ old('start_time', '09:00') }}" class="form-input-styled" required>
+                            @error('start_time') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
                         </div>
                     </div>
 
@@ -54,16 +59,19 @@
                         <div>
                             <label for="duration_minutes" class="form-label">Duration (minutes)</label>
                             <input id="duration_minutes" type="number" name="duration_minutes" value="{{ old('duration_minutes', 60) }}" class="form-input-styled" min="15" max="300" required>
+                            @error('duration_minutes') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
                         </div>
                         <div>
                             <label for="buffer_minutes" class="form-label">Buffer Between Sessions (min)</label>
                             <input id="buffer_minutes" type="number" name="buffer_minutes" value="{{ old('buffer_minutes', 15) }}" class="form-input-styled" min="5" max="60" required>
+                            @error('buffer_minutes') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
                         </div>
                     </div>
 
                     <div>
                         <label for="notes" class="form-label">Notes <span class="text-gray-400">(optional)</span></label>
                         <textarea id="notes" name="notes" rows="3" class="form-input-styled" placeholder="Any special instructions…">{{ old('notes') }}</textarea>
+                        @error('notes') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
                     </div>
 
                     <div class="flex justify-end gap-3 pt-4">

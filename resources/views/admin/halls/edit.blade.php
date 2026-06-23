@@ -11,6 +11,8 @@
             <div class="card-body">
                 <form id="update-hall-form" action="{{ route('admin.halls.update', $hall) }}" method="POST" class="space-y-5">
                     @csrf @method('PUT')
+                    <x-form-error-summary />
+
                     <div>
                         <label for="name" class="form-label">Hall Name</label>
                         <input id="name" type="text" name="name" value="{{ old('name', $hall->name) }}" class="form-input-styled" required>

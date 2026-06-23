@@ -17,6 +17,7 @@
                 <form action="{{ route('admin.courses.update', $course) }}" method="POST" class="space-y-6">
                     @csrf
                     @method('PUT')
+                    <x-form-error-summary />
                     
                     <div>
                         <x-input-label for="department_id" value="Department" />

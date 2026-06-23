@@ -23,11 +23,7 @@
             <div class="card-body">
                 <form action="{{ route('admin.systems.bulk-create', $hall) }}" method="POST" class="space-y-4">
                     @csrf
-                    @if ($errors->any())
-                        <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                            <p class="font-semibold">Please fix the issue below.</p>
-                        </div>
-                    @endif
+                    <x-form-error-summary title="Please fix the issue below:" />
 
                     <div>
                         <label for="systems_count" class="form-label">Number of Systems</label>

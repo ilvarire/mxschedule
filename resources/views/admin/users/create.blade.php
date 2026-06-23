@@ -14,6 +14,8 @@
             <div class="card-body">
                 <form action="{{ route('admin.users.store') }}" method="POST" class="space-y-5">
                     @csrf
+                    <x-form-error-summary />
+
                     <div>
                         <label for="name" class="form-label">Full Name</label>
                         <input id="name" type="text" name="name" value="{{ old('name') }}" class="form-input-styled" required>

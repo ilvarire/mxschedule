@@ -16,6 +16,7 @@
             <div class="card-body">
                 <form action="{{ route('admin.courses.store') }}" method="POST" class="space-y-6">
                     @csrf
+                    <x-form-error-summary />
                     
                     <div>
                         <x-input-label for="department_id" value="Department" />

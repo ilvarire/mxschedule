@@ -9,6 +9,7 @@
             @csrf
             <div class="card-body space-y-4">
                 <h2 class="font-bold text-gray-900">Add Faculty</h2>
+                <x-form-error-summary />
 
                 <div>
                     <label for="faculty_name" class="form-label">Faculty Name</label>
@@ -30,6 +31,7 @@
             @csrf
             <div class="card-body space-y-4">
                 <h2 class="font-bold text-gray-900">Add Department</h2>
+                <x-form-error-summary />
 
                 <div>
                     <label for="department_faculty_id" class="form-label">Faculty</label>

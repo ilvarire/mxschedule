@@ -54,6 +54,7 @@
             <div class="card-body">
                 <form action="{{ route('admin.import.process') }}" method="POST" enctype="multipart/form-data" class="space-y-5">
                     @csrf
+                    <x-form-error-summary />
 
                     {{-- Import Type --}}
                     <div>

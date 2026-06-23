@@ -10,6 +10,8 @@
         @method('PUT')
 
         <div class="card-body space-y-5">
+            <x-form-error-summary />
+
             <div>
                 <label for="setting_academic_session" class="form-label">Academic Session</label>
                 <input id="setting_academic_session" class="form-input-styled" name="settings[academic_session]" value="{{ $values['academic_session'] ?? '' }}" required>
