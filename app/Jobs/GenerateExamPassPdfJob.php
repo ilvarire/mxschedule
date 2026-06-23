@@ -3,6 +3,8 @@
 namespace App\Jobs;
 
 use App\Models\Exam;
+use App\Notifications\ExamJobFailedNotification;
+use App\Services\AdminNotificationService;
 use App\Services\ExamPassService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -36,5 +38,16 @@ class GenerateExamPassPdfJob implements ShouldQueue
         });
 
         Log::info("Generated {$count} passes for Exam #{$this->exam->id}");
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error("Exam pass PDF generation failed for Exam #{$this->exam->id}: {$exception->getMessage()}");
+
+        app(AdminNotificationService::class)->notify(new ExamJobFailedNotification(
+            $this->exam->fresh('course'),
+            'Exam pass PDF generation',
+            $exception->getMessage(),
+        ));
     }
 }

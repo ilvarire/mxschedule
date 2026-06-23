@@ -3,8 +3,10 @@
 namespace App\Models;
 
 use App\Enums\SystemStatus;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 
 class System extends Model
 {
@@ -54,5 +56,15 @@ class System extends Model
     public function isActive(): bool
     {
         return $this->status === SystemStatus::Active;
+    }
+
+    /**
+     * Sort system codes in human order: HC9, HC10, HC11, HC100.
+     */
+    public static function naturalSort(Collection|EloquentCollection $systems): Collection|EloquentCollection
+    {
+        return $systems
+            ->sortBy('system_code', SORT_NATURAL | SORT_FLAG_CASE)
+            ->values();
     }
 }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Notifications\AccountCreatedNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
@@ -41,9 +42,10 @@ class UserController extends Controller
         ]);
 
         $user->assignRole($validated['role']);
+        $user->notify(new AccountCreatedNotification($validated['password'], $validated['role']));
 
         return redirect()->route('admin.users.index')
-            ->with('success', 'User created.');
+            ->with('success', 'User created and login details emailed.');
     }
 
     public function show(User $user)

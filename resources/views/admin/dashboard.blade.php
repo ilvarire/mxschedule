@@ -101,7 +101,7 @@
                             <span class="text-xs text-gray-500">{{ $hall->systems->where('status.value', 'active')->count() }}/{{ $hall->systems->count() }} active</span>
                         </div>
                         <div class="flex flex-wrap gap-1.5">
-                            @foreach($hall->systems->sortBy('system_code') as $sys)
+                            @foreach(\App\Models\System::naturalSort($hall->systems) as $sys)
                                 <div class="system-dot {{ $sys->status->value }}" title="{{ $sys->system_code }} — {{ $sys->status->label() }}">
                                     {{ (int) preg_replace('/\D/', '', substr($sys->system_code, strlen($hall->code))) }}
                                 </div>

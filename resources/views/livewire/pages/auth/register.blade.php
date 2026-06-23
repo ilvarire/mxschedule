@@ -1,10 +1,12 @@
 <?php
 
 use App\Models\User;
-use Illuminate\Auth\Events\Registered;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\Rules;
+use App\Notifications\AccountCreationOtpNotification;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
@@ -14,11 +16,64 @@ new #[Layout('layouts.guest')] class extends Component
     public string $email_prefix = '';
     public string $password = '';
     public string $password_confirmation = '';
+    public string $otp = '';
+    public bool $otp_sent = false;
+    public string $pending_email = '';
 
     /**
      * Handle an incoming registration request.
      */
     public function register(): void
+    {
+        $validated = $this->validateRegistrationData();
+        $email = $validated['email'];
+
+        if (! $this->otp_sent || $this->pending_email !== $email) {
+            $this->sendOtp($validated);
+
+            return;
+        }
+
+        $this->validate([
+            'otp' => ['required', 'digits:6'],
+        ]);
+
+        $cachedHash = Cache::get($this->otpCacheKey($email));
+
+        if (! $cachedHash) {
+            $this->addError('otp', 'This verification code has expired. Please request a new code.');
+            $this->otp_sent = false;
+
+            return;
+        }
+
+        if (! Hash::check($this->otp, $cachedHash)) {
+            $this->addError('otp', 'The verification code is invalid.');
+
+            return;
+        }
+
+        $user = User::create([
+            'name' => $validated['name'],
+            'email' => $email,
+            'password' => Hash::make($validated['password']),
+            'email_verified_at' => now(),
+        ]);
+        $user->assignRole('student');
+
+        Cache::forget($this->otpCacheKey($email));
+
+        Auth::login($user);
+
+        $this->redirect(route('dashboard', absolute: false));
+    }
+
+    public function resendOtp(): void
+    {
+        $this->sendOtp($this->validateRegistrationData());
+    }
+
+    protected function validateRegistrationData(): array
     {
         $domain = config('app.allowed_email_domain', '@mxschedule.test');
         $fullEmail = $this->email_prefix . $domain;
@@ -44,22 +99,28 @@ new #[Layout('layouts.guest')] class extends Component
         );
 
         $validator->validate();
-        $validated = $validator->validated();
 
-        $validated['password'] = Hash::make($validated['password']);
+        return $validator->validated();
+    }
 
-        $user = User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => $validated['password'],
-        ]);
-        $user->assignRole('student');
+    protected function sendOtp(array $validated): void
+    {
+        $code = (string) random_int(100000, 999999);
+        $email = $validated['email'];
 
-        event(new Registered($user));
+        Cache::put($this->otpCacheKey($email), Hash::make($code), now()->addMinutes(10));
 
-        Auth::login($user);
+        Notification::route('mail', $email)
+            ->notify(new AccountCreationOtpNotification($code, 10));
 
-        $this->redirect(route('dashboard', absolute: false));
+        $this->pending_email = $email;
+        $this->otp_sent = true;
+        $this->otp = '';
+    }
+
+    protected function otpCacheKey(string $email): string
+    {
+        return 'registration_otp:'.sha1(strtolower($email));
     }
 }; ?>
 
@@ -70,6 +131,12 @@ new #[Layout('layouts.guest')] class extends Component
     </div>
 
     <form wire:submit="register" class="space-y-6">
+        @if($otp_sent)
+            <div class="rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+                We sent a 6-digit verification code to <strong>{{ $pending_email }}</strong>. Enter it below to create your account.
+            </div>
+        @endif
+
         <!-- Name -->
         <div>
             <label for="name" class="block text-sm font-medium text-white/90 mb-1">Full Name</label>
@@ -122,13 +189,24 @@ new #[Layout('layouts.guest')] class extends Component
             <x-input-error :messages="$errors->get('password_confirmation')" class="mt-2 text-red-400" />
         </div>
 
+        @if($otp_sent)
+            <div>
+                <label for="otp" class="block text-sm font-medium text-white/90 mb-1">Email OTP</label>
+                <input wire:model="otp" id="otp" type="text" inputmode="numeric" maxlength="6" class="block w-full px-3 py-2.5 border border-white/10 rounded-xl leading-5 bg-white/5 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 sm:text-sm transition-all duration-200" placeholder="123456" autocomplete="one-time-code" />
+                <x-input-error :messages="$errors->get('otp')" class="mt-2 text-red-400" />
+                <button type="button" wire:click="resendOtp" class="mt-2 text-sm font-medium text-brand-300 hover:text-brand-200">
+                    Resend code
+                </button>
+            </div>
+        @endif
+
         <div class="flex items-center justify-between mt-6">
             <a href="{{ route('login') }}" wire:navigate class="text-sm font-medium text-brand-300 hover:text-brand-200 transition-colors">
                 Already registered?
             </a>
 
             <button type="submit" class="inline-flex justify-center py-2.5 px-6 border border-transparent rounded-xl shadow-[0_0_15px_rgba(59,130,246,0.3)] text-sm font-medium text-white bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-brand-500 transition-all duration-300 transform hover:-translate-y-0.5">
-                <span wire:loading.remove wire:target="register">Register</span>
+                <span wire:loading.remove wire:target="register">{{ $otp_sent ? 'Verify & Create Account' : 'Send Email OTP' }}</span>
                 <span wire:loading wire:target="register" class="flex items-center">
                     <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                     Processing...

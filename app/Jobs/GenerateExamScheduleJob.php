@@ -3,6 +3,8 @@
 namespace App\Jobs;
 
 use App\Models\Exam;
+use App\Notifications\ExamJobFailedNotification;
+use App\Services\AdminNotificationService;
 use App\Services\SchedulingEngine;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -48,5 +50,11 @@ class GenerateExamScheduleJob implements ShouldQueue
     {
         Log::error("Schedule generation failed for Exam #{$this->exam->id}: {$exception->getMessage()}");
         $this->exam->update(['status' => \App\Enums\ExamStatus::Draft]);
+
+        app(AdminNotificationService::class)->notify(new ExamJobFailedNotification(
+            $this->exam->fresh('course'),
+            'Schedule generation',
+            $exception->getMessage(),
+        ));
     }
 }

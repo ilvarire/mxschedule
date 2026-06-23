@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Exam;
+use App\Notifications\CsvImportSummaryNotification;
 use App\Services\CsvImportService;
 use Illuminate\Http\Request;
 
@@ -31,6 +31,14 @@ class CsvImportController extends Controller
             'students' => $service->importStudents($file, $session, $semester),
             'enrollments' => $service->importEnrollments($file, $session, $semester),
         };
+
+        $request->user()?->notify(new CsvImportSummaryNotification(
+            $results,
+            $request->input('import_type'),
+            $session,
+            $semester,
+            $request->user(),
+        ));
 
         return back()->with('import_results', $results);
     }

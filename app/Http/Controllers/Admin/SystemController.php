@@ -9,12 +9,23 @@ use App\Models\System;
 use App\Services\ReallocationService;
 use App\Services\SystemManagementService;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class SystemController extends Controller
 {
     public function index()
     {
-        $systems = System::with('hall')->orderBy('system_code')->paginate(50);
+        $sortedSystems = System::naturalSort(System::with('hall')->get());
+        $page = LengthAwarePaginator::resolveCurrentPage();
+        $perPage = 50;
+
+        $systems = new LengthAwarePaginator(
+            $sortedSystems->forPage($page, $perPage)->values(),
+            $sortedSystems->count(),
+            $perPage,
+            $page,
+            ['path' => request()->url(), 'query' => request()->query()],
+        );
 
         return view('admin.systems.index', compact('systems'));
     }

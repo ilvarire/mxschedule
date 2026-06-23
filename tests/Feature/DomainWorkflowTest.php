@@ -2,6 +2,7 @@
 
 use App\Enums\ExamStatus;
 use App\Enums\SeatStatus;
+use App\Enums\SystemStatus;
 use App\Models\Course;
 use App\Models\Department;
 use App\Models\Exam;
@@ -16,7 +17,13 @@ use App\Services\QrValidationService;
 use App\Services\ReallocationService;
 use App\Services\SchedulingEngine;
 use App\Services\ExamPassService;
+use App\Jobs\SendScheduleNotificationsJob;
+use App\Notifications\ReallocationAttentionRequiredNotification;
+use App\Notifications\ScheduleReleasedNotification;
+use App\Notifications\StudentReallocatedNotification;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Notification;
+use Spatie\Permission\Models\Role;
 
 function domainFixture(): array
 {
@@ -69,6 +76,15 @@ function createAllocation(array $fixture, Carbon $start, Carbon $end): ExamAlloc
     ]);
 }
 
+function domainAdminUser(): User
+{
+    $role = Role::firstOrCreate(['name' => 'super_admin', 'guard_name' => 'web']);
+    $user = User::factory()->create();
+    $user->assignRole($role);
+
+    return $user;
+}
+
 test('overlapping exams do not allocate the same computer at the same time', function () {
     $fixture = domainFixture();
     $start = now()->addDay()->startOfDay()->addHours(9);
@@ -93,6 +109,7 @@ test('overlapping exams do not allocate the same computer at the same time', fun
 });
 
 test('reallocation retires the old row and issues a replacement allocation', function () {
+    Notification::fake();
     $fixture = domainFixture();
     $allocation = createAllocation($fixture, now()->addHour(), now()->addHours(2));
 
@@ -101,6 +118,28 @@ test('reallocation retires the old row and issues a replacement allocation', fun
     expect($allocation->refresh()->seat_status)->toBe(SeatStatus::Reassigned)
         ->and($replacement->system_id)->toBe($fixture['replacement']->id)
         ->and($replacement->examPass)->not->toBeNull();
+
+    Notification::assertSentTo($fixture['user'], StudentReallocatedNotification::class, function ($notification) use ($allocation, $replacement) {
+        return $notification->oldAllocation->is($allocation)
+            && $notification->newAllocation->is($replacement);
+    });
+});
+
+test('system reallocation asks admins for attention when no replacement is available', function () {
+    Notification::fake();
+    $admin = domainAdminUser();
+    $fixture = domainFixture();
+    $fixture['replacement']->update(['status' => SystemStatus::Inactive]);
+    $allocation = createAllocation($fixture, now()->addHour(), now()->addHours(2));
+
+    $reassigned = app(ReallocationService::class)->reassignFromSystem($fixture['system']);
+
+    expect($reassigned)->toHaveCount(0)
+        ->and($allocation->refresh()->seat_status)->toBe(SeatStatus::Allocated);
+
+    Notification::assertSentTo($admin, ReallocationAttentionRequiredNotification::class, function ($notification) use ($allocation) {
+        return $notification->allocation->is($allocation);
+    });
 });
 
 test('offline reconciliation rejects an unsigned payload', function () {
@@ -155,4 +194,17 @@ test('lifecycle synchronization completes attendance and marks no shows', functi
     expect($allocation->refresh()->seat_status)->toBe(SeatStatus::NoShow)
         ->and($allocation->examSession->refresh()->status->value)->toBe('completed')
         ->and($allocation->examSession->exam->refresh()->status)->toBe(ExamStatus::Completed);
+});
+
+test('schedule notification job sends exam emails', function () {
+    Notification::fake();
+    $fixture = domainFixture();
+    $allocation = createAllocation($fixture, now()->addHour(), now()->addHours(2));
+
+    (new SendScheduleNotificationsJob($allocation->examSession->exam))->handle();
+
+    Notification::assertSentTo($fixture['user'], ScheduleReleasedNotification::class, function ($notification) use ($allocation) {
+        return $notification->allocation->is($allocation)
+            && $notification->exam->is($allocation->examSession->exam);
+    });
 });

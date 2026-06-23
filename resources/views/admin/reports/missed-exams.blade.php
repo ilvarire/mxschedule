@@ -60,7 +60,7 @@
                                         <input type="hidden" name="allocation_id" value="{{ $alloc->id }}">
                                         <select name="new_system_id" class="form-input-styled text-xs mb-1" required>
                                             <option value="">Select system...</option>
-                                            @foreach(\App\Models\System::available()->orderBy('system_code')->get() as $system)
+                                            @foreach(\App\Models\System::naturalSort(\App\Models\System::available()->get()) as $system)
                                                 <option value="{{ $system->id }}">{{ $system->system_code }}</option>
                                             @endforeach
                                         </select>

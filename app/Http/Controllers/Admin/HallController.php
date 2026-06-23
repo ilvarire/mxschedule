@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Hall;
+use App\Models\System;
 use Illuminate\Http\Request;
 
 class HallController extends Controller
@@ -40,7 +41,8 @@ class HallController extends Controller
 
     public function show(Hall $hall)
     {
-        $hall->load(['systems' => fn ($q) => $q->orderBy('system_code')]);
+        $hall->load('systems');
+        $hall->setRelation('systems', System::naturalSort($hall->systems));
 
         return view('admin.halls.show', compact('hall'));
     }

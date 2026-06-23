@@ -6,6 +6,7 @@ use App\Models\Course;
 use App\Models\Department;
 use App\Models\StudentProfile;
 use App\Models\User;
+use App\Notifications\AccountCreatedNotification;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -104,17 +105,22 @@ class CsvImportService
         }
 
         // Create or update user
+        $defaultPassword = 'password';
         $user = User::firstOrCreate(
             ['email' => strtolower(trim($row['email']))],
             [
                 'name' => trim($row['name']),
-                'password' => Hash::make('password'),
+                'password' => Hash::make($defaultPassword),
                 'email_verified_at' => now(),
             ]
         );
 
         if (! $user->hasRole('student')) {
             $user->assignRole('student');
+        }
+
+        if ($user->wasRecentlyCreated) {
+            $user->notify(new AccountCreatedNotification($defaultPassword, 'student'));
         }
 
         // Create or update student profile

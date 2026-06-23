@@ -13,6 +13,7 @@
 
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
+        @livewireStyles
     </head>
     <body class="font-sans text-gray-900 antialiased relative bg-gray-900 min-h-screen selection:bg-brand-500 selection:text-white">
         <!-- Background Image & Overlay -->
@@ -40,5 +41,6 @@
                 &copy; {{ date('Y') }} MXSchedule Platform. All rights reserved.
             </div>
         </div>
+        @livewireScripts
     </body>
 </html>

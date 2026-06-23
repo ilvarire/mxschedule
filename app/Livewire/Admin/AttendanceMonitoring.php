@@ -77,7 +77,9 @@ class AttendanceMonitoring extends Component
             $hall = $hallAllocations->first()->hall;
             return [
                 'name' => $hall->name,
-                'allocations' => $hallAllocations->sortBy('system.system_code')
+                'allocations' => $hallAllocations
+                    ->sortBy(fn ($allocation) => $allocation->system->system_code, SORT_NATURAL | SORT_FLAG_CASE)
+                    ->values(),
             ];
         });
 

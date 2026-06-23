@@ -51,7 +51,7 @@
                     <p class="text-center text-gray-400 py-8">No systems yet. Use the form to add systems.</p>
                 @else
                     <div class="flex flex-wrap gap-2 mb-6">
-                        @foreach($hall->systems->sortBy('system_code') as $system)
+                        @foreach($hall->systems as $system)
                             <div x-data="{ open: false }" class="relative">
                                 <button @click="open = !open" class="system-dot {{ $system->status->value }}" title="{{ $system->system_code }}">
                                     {{ (int) preg_replace('/\D/', '', substr($system->system_code, strlen($hall->code))) }}
@@ -82,7 +82,7 @@
                                 <tr><th>Code</th><th>Status</th><th>Last Used</th><th>Action</th></tr>
                             </thead>
                             <tbody>
-                                @foreach($hall->systems->sortBy('system_code') as $system)
+                                @foreach($hall->systems as $system)
                                 <tr>
                                     <td class="font-mono font-semibold">{{ $system->system_code }}</td>
                                     <td><span class="badge badge-{{ $system->status->color() }}">{{ $system->status->label() }}</span></td>
