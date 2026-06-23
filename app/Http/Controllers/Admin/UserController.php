@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Exam;
 use App\Models\User;
 use App\Notifications\AccountCreatedNotification;
+use App\Services\ExamRegistrationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Hash;
@@ -150,14 +151,16 @@ class UserController extends Controller
             return collect();
         }
 
+        $registrations = app(ExamRegistrationService::class);
+
         return Exam::with('course.department')
-            ->where(function ($query) use ($courses) {
+            ->where(function ($query) use ($courses, $registrations) {
                 foreach ($courses as $course) {
-                    $query->orWhere(function ($examQuery) use ($course) {
+                    $query->orWhere(function ($examQuery) use ($course, $registrations) {
                         $examQuery
                             ->where('course_id', $course->id)
-                            ->where('academic_session', $course->pivot->academic_session)
-                            ->where('semester', $course->pivot->semester);
+                            ->whereRaw('TRIM(academic_session) = ?', [$registrations->normalizeAcademicSession($course->pivot->academic_session)])
+                            ->whereRaw('LOWER(TRIM(semester)) = ?', [$registrations->normalizeSemester($course->pivot->semester)]);
                     });
                 }
             })

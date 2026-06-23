@@ -5,6 +5,7 @@ use App\Models\Course;
 use App\Models\Department;
 use App\Models\Exam;
 use App\Models\Faculty;
+use App\Models\StudentProfile;
 use App\Models\User;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -103,4 +104,42 @@ test('exam edit accepts database-style start time with seconds', function () {
         ->assertSessionHasNoErrors();
 
     expect($exam->refresh()->start_time)->toBe('09:00');
+});
+
+test('exam creation counts students enrolled for the same course session and semester', function () {
+    $admin = examManagementAdmin();
+    $course = examManagementCourse();
+    $studentUser = User::factory()->create();
+    $profile = StudentProfile::create([
+        'user_id' => $studentUser->id,
+        'matric_number' => 'MTH/2026/001',
+        'department_id' => $course->department_id,
+        'level' => 300,
+    ]);
+    $profile->courses()->attach($course->id, [
+        'academic_session' => '2025/2026',
+        'semester' => 'second',
+    ]);
+
+    $response = $this
+        ->actingAs($admin)
+        ->post(route('admin.exams.store'), [
+            'course_id' => $course->id,
+            'academic_session' => ' 2025/2026 ',
+            'semester' => ' second ',
+            'exam_date' => now()->addWeek()->toDateString(),
+            'start_time' => '09:00',
+            'duration_minutes' => 60,
+            'buffer_minutes' => 15,
+        ]);
+
+    $exam = Exam::latest('id')->first();
+
+    $response
+        ->assertRedirect(route('admin.exams.show', $exam))
+        ->assertSessionHasNoErrors();
+
+    expect($exam->total_registered_students)->toBe(1)
+        ->and($exam->academic_session)->toBe('2025/2026')
+        ->and($exam->semester->value)->toBe('second');
 });

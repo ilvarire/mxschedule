@@ -7,6 +7,7 @@ use App\Enums\Semester;
 use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\Exam;
+use App\Services\ExamRegistrationService;
 use Illuminate\Http\Request;
 
 class ExamController extends Controller
@@ -16,6 +17,7 @@ class ExamController extends Controller
         $exams = Exam::with('course.department')
             ->latest('exam_date')
             ->paginate(20);
+        $this->refreshDraftRegistrationCounts($exams->getCollection());
 
         return view('admin.exams.index', compact('exams'));
     }
@@ -30,6 +32,7 @@ class ExamController extends Controller
     public function store(Request $request)
     {
         $this->normalizeTimeInput($request);
+        $this->normalizeRegistrationInput($request);
 
         $validated = $request->validate([
             'course_id' => 'required|exists:courses,id',
@@ -42,18 +45,13 @@ class ExamController extends Controller
             'notes' => 'nullable|string|max:1000',
         ]);
 
-        // Count registered students
-        $studentCount = \App\Models\StudentProfile::whereHas('courses', function ($q) use ($validated) {
-            $q->where('course_id', $validated['course_id'])
-                ->where('academic_session', $validated['academic_session'])
-                ->where('semester', $validated['semester']);
-        })->count();
-
         $exam = Exam::create([
             ...$validated,
-            'total_registered_students' => $studentCount,
             'status' => ExamStatus::Draft,
         ]);
+
+        $studentCount = app(ExamRegistrationService::class)->registeredStudentCount($exam);
+        $exam->update(['total_registered_students' => $studentCount]);
 
         return redirect()->route('admin.exams.show', $exam)
             ->with('success', "Exam created. {$studentCount} students registered.");
@@ -61,6 +59,8 @@ class ExamController extends Controller
 
     public function show(Exam $exam)
     {
+        $this->refreshDraftRegistrationCounts(collect([$exam]));
+
         $exam->load([
             'course.department',
             'sessions.allocations',
@@ -82,6 +82,7 @@ class ExamController extends Controller
     {
         $this->authorize('update', $exam);
         $this->normalizeTimeInput($request);
+        $this->normalizeRegistrationInput($request);
 
         $validated = $request->validate([
             'course_id' => 'required|exists:courses,id',
@@ -95,6 +96,9 @@ class ExamController extends Controller
         ]);
 
         $exam->update($validated);
+        $exam->update([
+            'total_registered_students' => app(ExamRegistrationService::class)->registeredStudentCount($exam->refresh()),
+        ]);
 
         return redirect()->route('admin.exams.show', $exam)
             ->with('success', 'Exam updated.');
@@ -116,6 +120,31 @@ class ExamController extends Controller
             $request->merge([
                 'start_time' => substr((string) $request->input('start_time'), 0, 5),
             ]);
+        }
+    }
+
+    protected function normalizeRegistrationInput(Request $request): void
+    {
+        $request->merge([
+            'academic_session' => trim((string) $request->input('academic_session')),
+            'semester' => strtolower(trim((string) $request->input('semester'))),
+        ]);
+    }
+
+    protected function refreshDraftRegistrationCounts($exams): void
+    {
+        $registrations = app(ExamRegistrationService::class);
+
+        foreach ($exams as $exam) {
+            if (! in_array($exam->status, [ExamStatus::Draft, ExamStatus::Cancelled], true)) {
+                continue;
+            }
+
+            $count = $registrations->registeredStudentCount($exam);
+
+            if ($exam->total_registered_students !== $count) {
+                $exam->forceFill(['total_registered_students' => $count])->save();
+            }
         }
     }
 }

@@ -36,7 +36,7 @@
                             <label for="semester" class="form-label">Semester</label>
                             <select id="semester" name="semester" class="form-input-styled" required>
                                 <option value="first" {{ old('semester', \App\Models\Setting::getValue('current_semester', 'first')) === 'first' ? 'selected' : '' }}>First</option>
-                                <option value="second" {{ old('semester') === 'second' ? 'selected' : '' }}>Second</option>
+                                <option value="second" {{ old('semester', \App\Models\Setting::getValue('current_semester', 'first')) === 'second' ? 'selected' : '' }}>Second</option>
                             </select>
                             @error('semester') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
                         </div>

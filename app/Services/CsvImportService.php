@@ -33,6 +33,8 @@ class CsvImportService
      */
     public function importStudents(UploadedFile $file, string $academicSession, string $semester): array
     {
+        $academicSession = $this->normalizeAcademicSession($academicSession);
+        $semester = $this->normalizeSemester($semester);
         $rows = $this->parseCsv($file);
 
         if ($rows->isEmpty()) {
@@ -60,6 +62,8 @@ class CsvImportService
      */
     public function importEnrollments(UploadedFile $file, string $academicSession, string $semester): array
     {
+        $academicSession = $this->normalizeAcademicSession($academicSession);
+        $semester = $this->normalizeSemester($semester);
         $rows = $this->parseCsv($file);
 
         if ($rows->isEmpty()) {
@@ -219,14 +223,24 @@ class CsvImportService
             [
                 'course_id' => $course->id,
                 'student_profile_id' => $profile->id,
-                'academic_session' => $academicSession,
-                'semester' => $semester,
+                'academic_session' => $this->normalizeAcademicSession($academicSession),
+                'semester' => $this->normalizeSemester($semester),
             ],
             [
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
         );
+    }
+
+    protected function normalizeAcademicSession(string $value): string
+    {
+        return trim($value);
+    }
+
+    protected function normalizeSemester(string $value): string
+    {
+        return strtolower(trim($value));
     }
 
     protected function results(?string $globalError = null): array

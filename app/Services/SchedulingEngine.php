@@ -8,7 +8,6 @@ use App\Jobs\SendScheduleNotificationsJob;
 use App\Models\Exam;
 use App\Models\ExamAllocation;
 use App\Models\ExamSession;
-use App\Models\StudentProfile;
 use App\Models\System;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -115,11 +114,9 @@ class SchedulingEngine
 
     protected function getRegisteredStudents(Exam $exam): Collection
     {
-        return StudentProfile::whereHas('courses', function ($query) use ($exam) {
-            $query->where('course_id', $exam->course_id)
-                ->where('academic_session', $exam->academic_session)
-                ->where('semester', $exam->semester->value);
-        })->get();
+        return app(ExamRegistrationService::class)
+            ->registeredStudentsQuery($exam)
+            ->get();
     }
 
     protected function firstSlotStart(Exam $exam): Carbon

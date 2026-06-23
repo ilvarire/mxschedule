@@ -24,8 +24,8 @@ class CsvImportController extends Controller
         ]);
 
         $file = $request->file('csv_file');
-        $session = $request->input('academic_session');
-        $semester = $request->input('semester');
+        $session = trim((string) $request->input('academic_session'));
+        $semester = strtolower(trim((string) $request->input('semester')));
 
         $results = match ($request->input('import_type')) {
             'students' => $service->importStudents($file, $session, $semester),

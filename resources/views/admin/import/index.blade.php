@@ -68,13 +68,13 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label for="academic_session" class="form-label">Academic Session</label>
-                            <input id="academic_session" type="text" name="academic_session" value="2025/2026" class="form-input-styled" required>
+                            <input id="academic_session" type="text" name="academic_session" value="{{ old('academic_session', \App\Models\Setting::getValue('academic_session', '2025/2026')) }}" class="form-input-styled" required>
                         </div>
                         <div>
                             <label for="semester" class="form-label">Semester</label>
                             <select id="semester" name="semester" class="form-input-styled" required>
-                                <option value="first">First Semester</option>
-                                <option value="second">Second Semester</option>
+                                <option value="first" {{ old('semester', \App\Models\Setting::getValue('current_semester', 'first')) === 'first' ? 'selected' : '' }}>First Semester</option>
+                                <option value="second" {{ old('semester', \App\Models\Setting::getValue('current_semester', 'first')) === 'second' ? 'selected' : '' }}>Second Semester</option>
                             </select>
                         </div>
                     </div>
