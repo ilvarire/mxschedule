@@ -11,6 +11,8 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class ExamPassService
 {
+    public const PDF_TEMPLATE_VERSION = 'v2';
+
     /**
      * Generate passes for all allocations of an exam.
      */
@@ -131,7 +133,7 @@ class ExamPassService
         // Quarter A4: 105mm × 148.5mm
         $pdf->setPaper([0, 0, 297.64, 420.94], 'portrait');
 
-        $filename = "exam-passes/{$allocation->id}_{$pass->pass_code}.pdf";
+        $filename = 'exam-passes/' . self::PDF_TEMPLATE_VERSION . "_{$allocation->id}_{$pass->pass_code}.pdf";
 
         // Store via the Storage abstraction so cloud drivers (S3 etc.) work transparently.
         Storage::disk('public')->put($filename, $pdf->output());

@@ -31,7 +31,7 @@ class GenerateExamPassPdfJob implements ShouldQueue
 
         $count = $passService->generateForExam($this->exam->id);
         $this->exam->allocations()->with('examPass')->get()->each(function ($allocation) use ($passService) {
-            if ($allocation->examPass && ! $allocation->examPass->pdf_path) {
+            if ($allocation->examPass && $this->shouldGeneratePdf($allocation->examPass->pdf_path)) {
                 $passService->generatePdf($allocation->examPass);
             }
         });
@@ -48,5 +48,10 @@ class GenerateExamPassPdfJob implements ShouldQueue
             'Exam pass PDF generation',
             $exception->getMessage(),
         ));
+    }
+
+    protected function shouldGeneratePdf(?string $path): bool
+    {
+        return ! $path || ! str_starts_with($path, 'exam-passes/' . ExamPassService::PDF_TEMPLATE_VERSION . '_');
     }
 }

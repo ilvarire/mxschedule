@@ -90,13 +90,13 @@ test('student can download an existing cached exam pass pdf', function () {
     Queue::fake();
     Storage::fake('public');
     $fixture = studentExamPassFixture();
-    Storage::disk('public')->put('exam-passes/pass.pdf', 'PDF content');
+    Storage::disk('public')->put('exam-passes/v2_pass.pdf', 'PDF content');
 
     ExamPass::create([
         'exam_allocation_id' => $fixture['allocation']->id,
         'pass_code' => 'pass-code',
         'qr_payload' => 'signed-payload',
-        'pdf_path' => 'exam-passes/pass.pdf',
+        'pdf_path' => 'exam-passes/v2_pass.pdf',
         'expires_at' => now()->addWeek(),
     ]);
 
@@ -107,4 +107,27 @@ test('student can download an existing cached exam pass pdf', function () {
         ->assertDownload('exam-pass-CSE-2026-001.pdf');
 
     Queue::assertNothingPushed();
+});
+
+test('student download regenerates old cached exam pass pdf layout', function () {
+    Queue::fake();
+    Storage::fake('public');
+    $fixture = studentExamPassFixture();
+    Storage::disk('public')->put('exam-passes/old-pass.pdf', 'Old PDF content');
+
+    ExamPass::create([
+        'exam_allocation_id' => $fixture['allocation']->id,
+        'pass_code' => 'pass-code',
+        'qr_payload' => 'signed-payload',
+        'pdf_path' => 'exam-passes/old-pass.pdf',
+        'expires_at' => now()->addWeek(),
+    ]);
+
+    $this
+        ->actingAs($fixture['user'])
+        ->get(route('student.exam-pass.download', $fixture['allocation']))
+        ->assertRedirect()
+        ->assertSessionHas('success');
+
+    Queue::assertPushed(GenerateExamPassPdfJob::class);
 });

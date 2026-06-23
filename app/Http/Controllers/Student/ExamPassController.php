@@ -57,7 +57,7 @@ class ExamPassController extends Controller
             return back()->with('error', 'Pass is not yet available.');
         }
 
-        if (! $pass->pdf_path || ! Storage::disk('public')->exists($pass->pdf_path)) {
+        if ($this->needsPreparedPdf($pass->pdf_path)) {
             GenerateExamPassPdfJob::dispatch($allocation->examSession->exam);
 
             return back()->with('success', 'Your exam pass PDF is being prepared. Please try the download again in a minute.');
@@ -74,5 +74,12 @@ class ExamPassController extends Controller
         $matric = preg_replace('/[^A-Za-z0-9_-]+/', '-', $allocation->studentProfile->matric_number);
 
         return 'exam-pass-' . trim($matric, '-') . '.pdf';
+    }
+
+    protected function needsPreparedPdf(?string $path): bool
+    {
+        return ! $path
+            || ! str_starts_with($path, 'exam-passes/' . ExamPassService::PDF_TEMPLATE_VERSION . '_')
+            || ! Storage::disk('public')->exists($path);
     }
 }
