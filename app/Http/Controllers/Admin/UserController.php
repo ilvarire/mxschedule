@@ -7,6 +7,8 @@ use App\Models\User;
 use App\Notifications\AccountCreatedNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
 use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
@@ -29,7 +31,6 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'phone' => 'nullable|string|max:20',
-            'password' => 'required|string|min:8|confirmed',
             'role' => 'required|exists:roles,name',
         ]);
 
@@ -37,15 +38,15 @@ class UserController extends Controller
             'name' => $validated['name'],
             'email' => $validated['email'],
             'phone' => $validated['phone'] ?? null,
-            'password' => Hash::make($validated['password']),
+            'password' => Hash::make(Str::random(64)),
             'email_verified_at' => now(),
         ]);
 
         $user->assignRole($validated['role']);
-        $user->notify(new AccountCreatedNotification($validated['password'], $validated['role']));
+        $user->notify(new AccountCreatedNotification($this->passwordSetupUrl($user), $validated['role']));
 
         return redirect()->route('admin.users.index')
-            ->with('success', 'User created and login details emailed.');
+            ->with('success', 'User created and password setup link emailed.');
     }
 
     public function show(User $user)
@@ -88,5 +89,15 @@ class UserController extends Controller
         $user->delete();
         return redirect()->route('admin.users.index')
             ->with('success', 'User deleted.');
+    }
+
+    protected function passwordSetupUrl(User $user): string
+    {
+        $token = Password::broker()->createToken($user);
+
+        return route('password.reset', [
+            'token' => $token,
+            'email' => $user->email,
+        ]);
     }
 }

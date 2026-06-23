@@ -12,6 +12,7 @@ use App\Notifications\AccountCreatedNotification;
 use App\Notifications\CsvImportSummaryNotification;
 use App\Notifications\ExamJobFailedNotification;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Spatie\Permission\Models\Role;
@@ -25,7 +26,7 @@ function createSuperAdminUser(): User
     return $user;
 }
 
-test('admin-created users receive their login details by email', function () {
+test('admin-created users receive a password setup link by email', function () {
     Notification::fake();
     createSuperAdminUser();
     Role::firstOrCreate(['name' => 'exam_officer', 'guard_name' => 'web']);
@@ -39,24 +40,25 @@ test('admin-created users receive their login details by email', function () {
             'email' => 'officer@mxschedule.test',
             'phone' => '08000000000',
             'role' => 'exam_officer',
-            'password' => 'StrongPass123',
-            'password_confirmation' => 'StrongPass123',
         ]);
 
     $response->assertRedirect(route('admin.users.index'));
 
     $user = User::where('email', 'officer@mxschedule.test')->firstOrFail();
 
-    expect(Hash::check('StrongPass123', $user->password))->toBeTrue()
+    expect($user->password)->not->toBeNull()
         ->and($user->email_verified_at)->not->toBeNull();
 
     Notification::assertSentTo($user, AccountCreatedNotification::class, function ($notification) {
-        return $notification->plainPassword === 'StrongPass123'
-            && $notification->role === 'exam_officer';
+        return $notification->role === 'exam_officer'
+            && str_contains($notification->setupUrl, '/reset-password/')
+            && str_contains($notification->setupUrl, 'email=officer%40mxschedule.test');
     });
+
+    expect(DB::table('password_reset_tokens')->where('email', 'officer@mxschedule.test')->exists())->toBeTrue();
 });
 
-test('csv-created students receive default password email', function () {
+test('csv-created students receive password setup link email', function () {
     Notification::fake();
     $admin = createSuperAdminUser();
     Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
@@ -82,12 +84,15 @@ test('csv-created students receive default password email', function () {
     $user = User::where('email', 'csv.student@mxschedule.test')->firstOrFail();
 
     expect($user->hasRole('student'))->toBeTrue()
-        ->and(Hash::check('password', $user->password))->toBeTrue();
+        ->and(Hash::check('password', $user->password))->toBeFalse();
 
     Notification::assertSentTo($user, AccountCreatedNotification::class, function ($notification) {
-        return $notification->plainPassword === 'password'
-            && $notification->role === 'student';
+        return $notification->role === 'student'
+            && str_contains($notification->setupUrl, '/reset-password/')
+            && str_contains($notification->setupUrl, 'email=csv.student%40mxschedule.test');
     });
+
+    expect(DB::table('password_reset_tokens')->where('email', 'csv.student@mxschedule.test')->exists())->toBeTrue();
 
     Notification::assertSentTo($admin, CsvImportSummaryNotification::class, function ($notification) {
         return $notification->importType === 'students'

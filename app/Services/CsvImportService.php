@@ -11,7 +11,9 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 class CsvImportService
 {
@@ -104,13 +106,11 @@ class CsvImportService
             return;
         }
 
-        // Create or update user
-        $defaultPassword = 'password';
         $user = User::firstOrCreate(
             ['email' => strtolower(trim($row['email']))],
             [
                 'name' => trim($row['name']),
-                'password' => Hash::make($defaultPassword),
+                'password' => Hash::make(Str::random(64)),
                 'email_verified_at' => now(),
             ]
         );
@@ -120,7 +120,7 @@ class CsvImportService
         }
 
         if ($user->wasRecentlyCreated) {
-            $user->notify(new AccountCreatedNotification($defaultPassword, 'student'));
+            $user->notify(new AccountCreatedNotification($this->passwordSetupUrl($user), 'student'));
         }
 
         // Create or update student profile
@@ -238,5 +238,15 @@ class CsvImportService
             'skipped' => $this->skipped,
             'errors' => $globalError ? [$globalError] : $this->errors,
         ];
+    }
+
+    protected function passwordSetupUrl(User $user): string
+    {
+        $token = Password::broker()->createToken($user);
+
+        return route('password.reset', [
+            'token' => $token,
+            'email' => $user->email,
+        ]);
     }
 }

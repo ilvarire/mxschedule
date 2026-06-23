@@ -35,16 +35,8 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label class="form-label">Password</label>
-                            <input type="password" name="password" class="form-input-styled" required>
-                            @error('password') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
-                        </div>
-                        <div>
-                            <label class="form-label">Confirm Password</label>
-                            <input type="password" name="password_confirmation" class="form-input-styled" required>
-                        </div>
+                    <div class="rounded-lg border border-indigo-100 bg-indigo-50 p-4 text-sm text-indigo-800">
+                        MXSchedule will email this user a secure password setup link. No temporary password will be shown or sent.
                     </div>
                     <div class="flex justify-end gap-3 pt-4">
                         <a href="{{ route('admin.users.index') }}" class="btn btn-secondary">Cancel</a>

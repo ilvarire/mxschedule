@@ -8,7 +8,7 @@ use Illuminate\Notifications\Notification;
 class AccountCreatedNotification extends Notification
 {
     public function __construct(
-        public string $plainPassword,
+        public string $setupUrl,
         public ?string $role = null,
     ) {}
 
@@ -24,14 +24,14 @@ class AccountCreatedNotification extends Notification
             ->greeting("Hello {$notifiable->name},")
             ->line('An MXSchedule account has been created for you.')
             ->line("Email: {$notifiable->email}")
-            ->line("Temporary password: {$this->plainPassword}");
+            ->line('Use the secure setup link below to create your password.');
 
         if ($this->role) {
             $message->line('Role: '.ucwords(str_replace('_', ' ', $this->role)));
         }
 
         return $message
-            ->action('Log in to MXSchedule', route('login'))
-            ->line('Please log in and change your password from your profile page.');
+            ->action('Create Your Password', $this->setupUrl)
+            ->line('This link expires in '.config('auth.passwords.users.expire').' minutes. If it expires, use the forgot-password page to request a new one.');
     }
 }
