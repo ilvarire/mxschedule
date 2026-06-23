@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Exam;
 use App\Models\User;
 use App\Notifications\AccountCreatedNotification;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
@@ -51,14 +53,21 @@ class UserController extends Controller
 
     public function show(User $user)
     {
-        $user->load('roles', 'studentProfile');
-        return view('admin.users.show', compact('user'));
+        return view('admin.users.show', [
+            'user' => $user,
+            ...$this->studentContext($user),
+        ]);
     }
 
     public function edit(User $user)
     {
         $roles = Role::all();
-        return view('admin.users.edit', compact('user', 'roles'));
+
+        return view('admin.users.edit', [
+            'user' => $user,
+            'roles' => $roles,
+            ...$this->studentContext($user),
+        ]);
     }
 
     public function update(Request $request, User $user)
@@ -99,5 +108,61 @@ class UserController extends Controller
             'token' => $token,
             'email' => $user->email,
         ]);
+    }
+
+    protected function studentContext(User $user): array
+    {
+        $user->load([
+            'roles',
+            'studentProfile.department.faculty',
+            'studentProfile.courses.department',
+        ]);
+
+        $profile = $user->studentProfile;
+
+        if (! $profile) {
+            return [
+                'registeredExams' => collect(),
+                'examAllocations' => collect(),
+            ];
+        }
+
+        $examAllocations = $profile->examAllocations()
+            ->with([
+                'examSession.exam.course',
+                'hall',
+                'system',
+                'examPass',
+            ])
+            ->get()
+            ->sortByDesc(fn ($allocation) => $allocation->examSession?->start_time)
+            ->values();
+
+        return [
+            'registeredExams' => $this->registeredExamsFor($profile->courses),
+            'examAllocations' => $examAllocations,
+        ];
+    }
+
+    protected function registeredExamsFor(Collection $courses): Collection
+    {
+        if ($courses->isEmpty()) {
+            return collect();
+        }
+
+        return Exam::with('course.department')
+            ->where(function ($query) use ($courses) {
+                foreach ($courses as $course) {
+                    $query->orWhere(function ($examQuery) use ($course) {
+                        $examQuery
+                            ->where('course_id', $course->id)
+                            ->where('academic_session', $course->pivot->academic_session)
+                            ->where('semester', $course->pivot->semester);
+                    });
+                }
+            })
+            ->orderByDesc('exam_date')
+            ->orderBy('start_time')
+            ->get();
     }
 }

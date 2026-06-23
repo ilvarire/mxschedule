@@ -6,7 +6,7 @@
         </div>
     </x-slot>
 
-    <div class="max-w-2xl">
+    <div class="max-w-6xl space-y-6">
         <div class="card">
             <div class="card-body">
                 <form id="update-user-form" action="{{ route('admin.users.update', $user) }}" method="POST" class="space-y-5">
@@ -55,5 +55,11 @@
                 </form>
             </div>
         </div>
+
+        @include('admin.users._student-context', [
+            'user' => $user,
+            'registeredExams' => $registeredExams,
+            'examAllocations' => $examAllocations,
+        ])
     </div>
 </x-layouts.app>
