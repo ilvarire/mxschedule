@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Student;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\GenerateExamPassPdfJob;
 use App\Models\ExamAllocation;
 use App\Services\ExamPassService;
+use Illuminate\Support\Facades\Storage;
 
 class ExamPassController extends Controller
 {
@@ -36,25 +38,41 @@ class ExamPassController extends Controller
     {
         $this->authorize('download', $allocation);
 
+        $allocation->loadMissing([
+            'examSession.exam',
+            'studentProfile.user',
+            'examPass',
+        ]);
+
         $pass = $allocation->examPass;
 
         if (! $pass) {
-            return back()->with('error', 'Exam pass not yet generated.');
+            $pass = $passService->generateForAllocation($allocation);
+            GenerateExamPassPdfJob::dispatch($allocation->examSession->exam);
+
+            return back()->with('success', 'Your exam pass PDF is being prepared. Please try the download again in a minute.');
         }
 
         if (! $passService->isPassVisible($pass)) {
             return back()->with('error', 'Pass is not yet available.');
         }
 
-        // Generate PDF if not cached
-        if (! $pass->pdf_path || ! file_exists(storage_path("app/public/{$pass->pdf_path}"))) {
-            $passService->generatePdf($pass);
-            $pass->refresh();
+        if (! $pass->pdf_path || ! Storage::disk('public')->exists($pass->pdf_path)) {
+            GenerateExamPassPdfJob::dispatch($allocation->examSession->exam);
+
+            return back()->with('success', 'Your exam pass PDF is being prepared. Please try the download again in a minute.');
         }
 
-        return response()->download(
-            storage_path("app/public/{$pass->pdf_path}"),
-            "exam-pass-{$allocation->studentProfile->matric_number}.pdf"
+        return Storage::disk('public')->download(
+            $pass->pdf_path,
+            $this->downloadFilename($allocation)
         );
+    }
+
+    protected function downloadFilename(ExamAllocation $allocation): string
+    {
+        $matric = preg_replace('/[^A-Za-z0-9_-]+/', '-', $allocation->studentProfile->matric_number);
+
+        return 'exam-pass-' . trim($matric, '-') . '.pdf';
     }
 }
