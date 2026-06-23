@@ -2,6 +2,7 @@
 
 use App\Enums\ExamStatus;
 use App\Jobs\GenerateExamScheduleJob;
+use App\Jobs\SendScheduleNotificationsJob;
 use App\Models\Course;
 use App\Models\Department;
 use App\Models\Exam;
@@ -201,4 +202,35 @@ test('schedule generation immediately marks exam as scheduling while queued', fu
         ->assertOk()
         ->assertSee('Schedule generation is running or waiting in the queue')
         ->assertSee('Schedule Generation In Progress');
+});
+
+test('authorized admins can resend schedule notifications for scheduled exams', function () {
+    Queue::fake();
+
+    $permission = Permission::firstOrCreate(['name' => 'send_notifications', 'guard_name' => 'web']);
+    $role = Role::firstOrCreate(['name' => 'exam_officer', 'guard_name' => 'web']);
+    $role->givePermissionTo($permission);
+    $admin = User::factory()->create();
+    $admin->assignRole($role);
+
+    $course = examManagementCourse();
+    $exam = Exam::create([
+        'course_id' => $course->id,
+        'academic_session' => '2025/2026',
+        'semester' => 'first',
+        'exam_date' => now()->addWeek()->toDateString(),
+        'start_time' => '09:00',
+        'duration_minutes' => 60,
+        'buffer_minutes' => 15,
+        'status' => ExamStatus::Scheduled,
+        'total_registered_students' => 1,
+    ]);
+
+    $this
+        ->actingAs($admin)
+        ->post(route('admin.exams.notify', $exam))
+        ->assertRedirect()
+        ->assertSessionHas('success');
+
+    Queue::assertPushed(SendScheduleNotificationsJob::class);
 });

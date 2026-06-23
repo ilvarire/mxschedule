@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\ExamStatus;
 use App\Http\Controllers\Controller;
 use App\Jobs\GenerateExamScheduleJob;
 use App\Jobs\SendScheduleNotificationsJob;
-use App\Enums\ExamStatus;
 use App\Models\Exam;
 use App\Models\ExamAllocation;
 use App\Models\System;
@@ -54,7 +54,7 @@ class ScheduleController extends Controller
 
     public function notify(Exam $exam)
     {
-        $this->authorize('schedule', $exam);
+        $this->authorize('sendNotifications', $exam);
 
         if ($exam->status->value !== 'scheduled') {
             return back()->with('error', 'Can only send notifications for a fully scheduled exam.');

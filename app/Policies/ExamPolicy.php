@@ -42,4 +42,10 @@ class ExamPolicy
         return $user->hasPermissionTo('trigger_scheduling')
             && $exam->status === \App\Enums\ExamStatus::Scheduled;
     }
+
+    public function sendNotifications(User $user, Exam $exam): bool
+    {
+        return $user->hasPermissionTo('send_notifications')
+            && $exam->status === \App\Enums\ExamStatus::Scheduled;
+    }
 }
