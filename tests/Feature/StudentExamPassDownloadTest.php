@@ -113,13 +113,13 @@ test('student can download an existing cached exam pass pdf', function () {
     Queue::fake();
     Storage::fake('public');
     $fixture = studentExamPassFixture();
-    Storage::disk('public')->put('exam-passes/v2_pass.pdf', 'PDF content');
+    Storage::disk('public')->put('exam-passes/v3_pass.pdf', 'PDF content');
 
     $pass = ExamPass::create([
         'exam_allocation_id' => $fixture['allocation']->id,
         'pass_code' => 'pass-code',
         'qr_payload' => 'signed-payload',
-        'pdf_path' => 'exam-passes/v2_pass.pdf',
+        'pdf_path' => 'exam-passes/v3_pass.pdf',
         'expires_at' => now()->addWeek(),
     ]);
 
@@ -138,7 +138,7 @@ test('student download regenerates old cached exam pass pdf layout', function ()
     $fixture = studentExamPassFixture();
     Storage::disk('public')->put('exam-passes/old-pass.pdf', 'Old PDF content');
 
-    ExamPass::create([
+    $pass = ExamPass::create([
         'exam_allocation_id' => $fixture['allocation']->id,
         'pass_code' => 'pass-code',
         'qr_payload' => 'signed-payload',

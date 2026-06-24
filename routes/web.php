@@ -113,7 +113,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('invigilator.')
         ->middleware(['role:super_admin|invigilator'])
         ->group(function () {
-            Route::get('/scanner', fn () => view('invigilator.scanner'))
+            Route::get('/scanner', [Invigilator\ScannerController::class, 'index'])
                 ->middleware('permission:validate_entry')->name('scanner');
             Route::get('/attendance/{examSession}', fn (\App\Models\ExamSession $examSession) => view('invigilator.attendance', compact('examSession')))
                 ->middleware('permission:view_attendance')->name('attendance');

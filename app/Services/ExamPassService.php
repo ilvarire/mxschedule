@@ -11,7 +11,7 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class ExamPassService
 {
-    public const PDF_TEMPLATE_VERSION = 'v2';
+    public const PDF_TEMPLATE_VERSION = 'v3';
 
     /**
      * Generate passes for all allocations of an exam.

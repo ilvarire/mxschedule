@@ -26,40 +26,41 @@
         }
 
         body {
-            padding: 6mm;
-            font-size: 9px;
-            line-height: 1.25;
+            padding: 5mm;
+            font-size: 8.5px;
+            line-height: 1.18;
         }
 
         .pass {
-            width: 93mm;
-            height: 136.5mm;
+            width: 87mm;
+            height: auto;
             border: 1.5px solid #000;
-            padding: 5mm;
+            padding: 4mm;
             overflow: hidden;
+            page-break-inside: avoid;
         }
 
         .title {
             text-align: center;
             border-bottom: 1px solid #000;
-            padding-bottom: 3mm;
-            margin-bottom: 4mm;
+            padding-bottom: 2mm;
+            margin-bottom: 2.5mm;
         }
 
         .title h1 {
-            font-size: 15px;
+            font-size: 14px;
             letter-spacing: 1px;
             text-transform: uppercase;
-            margin-bottom: 1mm;
+            margin-bottom: 0.5mm;
         }
 
         .title p {
-            font-size: 9px;
+            font-size: 8px;
         }
 
         .row {
             border-bottom: 1px solid #000;
-            padding: 2mm 0;
+            padding: 1.35mm 0;
         }
 
         .label {
@@ -67,12 +68,12 @@
             font-size: 7px;
             text-transform: uppercase;
             letter-spacing: 0.4px;
-            margin-bottom: 0.75mm;
+            margin-bottom: 0.35mm;
         }
 
         .value {
             display: block;
-            font-size: 10px;
+            font-size: 9.5px;
             font-weight: bold;
             word-wrap: break-word;
         }
@@ -80,13 +81,13 @@
         .seat-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 3mm;
+            margin-top: 2mm;
             border: 1px solid #000;
         }
 
         .seat-table td {
             width: 50%;
-            padding: 2mm;
+            padding: 1.5mm;
             vertical-align: top;
         }
 
@@ -95,32 +96,32 @@
         }
 
         .seat-table .value {
-            font-size: 13px;
+            font-size: 11px;
         }
 
         .qr {
             text-align: center;
-            margin-top: 5mm;
+            margin-top: 2.5mm;
         }
 
         .qr img {
-            width: 42mm;
-            height: 42mm;
+            width: 28mm;
+            height: 28mm;
             display: block;
             margin: 0 auto;
         }
 
         .qr p {
-            font-size: 7px;
-            margin-top: 2mm;
+            font-size: 6.5px;
+            margin-top: 1mm;
         }
 
         .footer {
             text-align: center;
-            font-size: 7px;
-            margin-top: 4mm;
+            font-size: 6.5px;
+            margin-top: 2mm;
             border-top: 1px solid #000;
-            padding-top: 2mm;
+            padding-top: 1.25mm;
         }
     </style>
 </head>

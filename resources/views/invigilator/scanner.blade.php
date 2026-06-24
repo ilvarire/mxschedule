@@ -53,18 +53,49 @@
                         </span>
                     </div>
 
-                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <button @click="downloadSchedule()" :disabled="!isOnline" class="btn btn-outline text-xs py-2 w-full">
+                    <div class="space-y-3">
+                        <div>
+                            <label for="offline-exam-id" class="form-label text-xs">Exam Schedule</label>
+                            <select id="offline-exam-id" x-model="selectedExamId" class="form-input-styled text-sm">
+                                <option value="">Select a scheduled exam...</option>
+                                @foreach($exams as $exam)
+                                    @php
+                                        $firstSession = $exam->sessions->first();
+                                        $lastSession = $exam->sessions->last();
+                                    @endphp
+                                    <option value="{{ $exam->id }}">
+                                        {{ $exam->course->code }} - {{ $exam->course->title }}
+                                        | {{ $exam->exam_date->format('M j, Y') }}
+                                        @if($firstSession)
+                                            | {{ $firstSession->start_time->format('g:i A') }}
+                                            @if($lastSession && ! $lastSession->is($firstSession))
+                                                - {{ $lastSession->end_time->format('g:i A') }}
+                                            @endif
+                                        @endif
+                                        | {{ $exam->sessions->sum('allocated_count') }} student(s)
+                                    </option>
+                                @endforeach
+                            </select>
+                            @if($exams->isEmpty())
+                                <p class="mt-2 text-xs text-amber-600">No scheduled exams are available for offline download yet.</p>
+                            @endif
+                        </div>
+
+                        <button @click="downloadSchedule()" :disabled="!isOnline || !selectedExamId || isDownloading" class="btn btn-outline text-xs py-2 w-full disabled:opacity-60 disabled:cursor-not-allowed">
                             <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                            Download Schedule
+                            <span x-text="isDownloading ? 'Downloading...' : 'Download Selected Schedule'"></span>
                         </button>
-                        <button @click="sync() " :disabled="!isOnline || !hasPending" class="btn btn-outline text-xs py-2 w-full relative">
+                        <button @click="sync() " :disabled="!isOnline || !hasPending" class="btn btn-outline text-xs py-2 w-full relative disabled:opacity-60 disabled:cursor-not-allowed">
                             <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                             Sync Attendance
                             <span x-show="hasPending" x-text="pendingCount" class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center"></span>
                         </button>
                     </div>
 
+                    <div x-show="downloadedExam" class="mt-3 rounded-lg bg-gray-50 p-3 text-xs text-gray-600">
+                        Offline schedule loaded:
+                        <span class="font-semibold text-gray-900" x-text="downloadedExam"></span>
+                    </div>
                     <div x-show="lastDownload" class="mt-2 text-[10px] text-gray-400">
                         Last download: <span x-text="lastDownload"></span>
                     </div>
@@ -92,6 +123,9 @@
                 isOnline: navigator.onLine,
                 hasPending: false,
                 pendingCount: 0,
+                selectedExamId: localStorage.getItem('mx_offline_exam_id') || '',
+                downloadedExam: localStorage.getItem('mx_offline_exam_label') || null,
+                isDownloading: false,
                 lastDownload: localStorage.getItem('mx_last_download') || null,
 
                 init() {
@@ -108,13 +142,15 @@
                 },
 
                 async downloadSchedule() {
-                    // In a real app, we'd prompt for the exam ID or get active exams
-                    const examId = prompt("Enter Exam ID to download (e.g., 1 or 2):");
-                    if (!examId) return;
+                    if (!this.selectedExamId) {
+                        alert('Select a scheduled exam first.');
+                        return;
+                    }
 
                     try {
+                        this.isDownloading = true;
                         const [scheduleResp, keyResp] = await Promise.all([
-                            fetch(`/api/v1/offline/schedule/${examId}`, { headers: { 'Accept': 'application/json' } }),
+                            fetch(`/api/v1/offline/schedule/${this.selectedExamId}`, { headers: { 'Accept': 'application/json' } }),
                             fetch('/api/v1/offline/keys', { headers: { 'Accept': 'application/json' } }),
                         ]);
                         if (!scheduleResp.ok) throw new Error("Failed to fetch schedule");
@@ -124,11 +160,17 @@
                         const keyData = await keyResp.json();
                         localStorage.setItem('mx_offline_schedule', JSON.stringify(data));
                         localStorage.setItem('mx_offline_public_key', keyData.public_key);
+                        localStorage.setItem('mx_offline_exam_id', String(data.exam_id));
+                        this.selectedExamId = String(data.exam_id);
+                        this.downloadedExam = data.exam_label || data.course || `Exam #${data.exam_id}`;
+                        localStorage.setItem('mx_offline_exam_label', this.downloadedExam);
                         this.lastDownload = new Date().toLocaleString();
                         localStorage.setItem('mx_last_download', this.lastDownload);
-                        alert("Schedule downloaded successfully!");
+                        alert(`Schedule downloaded successfully for ${this.downloadedExam}.`);
                     } catch (err) {
                         alert("Error downloading schedule: " + err.message);
+                    } finally {
+                        this.isDownloading = false;
                     }
                 },
 

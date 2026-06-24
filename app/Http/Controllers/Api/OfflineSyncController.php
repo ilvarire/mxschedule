@@ -16,6 +16,7 @@ class OfflineSyncController extends Controller
     public function downloadSchedule(Exam $exam)
     {
         $this->authorize('view', $exam);
+        $exam->loadMissing(['course', 'sessions']);
 
         $allocations = ExamAllocation::whereHas('examSession', fn ($q) => $q->where('exam_id', $exam->id))
             ->where('seat_status', '!=', 'reassigned')
@@ -36,6 +37,9 @@ class OfflineSyncController extends Controller
         return response()->json([
             'exam_id' => $exam->id,
             'course' => $exam->course->code,
+            'exam_label' => "{$exam->course->code} - {$exam->course->title}",
+            'exam_date' => $exam->exam_date->toDateString(),
+            'session_count' => $exam->sessions->count(),
             'generated_at' => now()->timestamp,
             'allocations' => $allocations,
             'entry_window' => (int) Setting::getValue('entry_window_minutes', 15),
