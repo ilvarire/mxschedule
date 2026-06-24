@@ -85,11 +85,22 @@
                             <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                             <span x-text="isDownloading ? 'Downloading...' : 'Download Selected Schedule'"></span>
                         </button>
-                        <button @click="sync() " :disabled="!isOnline || !hasPending" class="btn btn-outline text-xs py-2 w-full relative disabled:opacity-60 disabled:cursor-not-allowed">
+                        <button @click="sync()" :disabled="!isOnline || !hasPending || isSyncing" class="btn btn-outline text-xs py-2 w-full relative disabled:opacity-60 disabled:cursor-not-allowed">
                             <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                            Sync Attendance
+                            <span x-text="isSyncing ? 'Syncing Attendance...' : 'Sync Attendance'"></span>
                             <span x-show="hasPending" x-text="pendingCount" class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center"></span>
                         </button>
+                        <p class="text-[11px] text-gray-500" x-text="pendingMessage()"></p>
+
+                        <div x-show="feedback.message"
+                             x-transition
+                             :class="feedbackClass()"
+                             class="rounded-lg border px-3 py-2 text-xs">
+                            <div class="flex items-start gap-2">
+                                <span class="mt-0.5 h-2 w-2 shrink-0 rounded-full" :class="feedbackDotClass()"></span>
+                                <span x-text="feedback.message"></span>
+                            </div>
+                        </div>
                     </div>
 
                     <div x-show="downloadedExam" class="mt-3 rounded-lg bg-gray-50 p-3 text-xs text-gray-600">
@@ -141,7 +152,12 @@
                 downloadedExam: localStorage.getItem('mx_offline_exam_label') || null,
                 downloadedSchedules: [],
                 isDownloading: false,
+                isSyncing: false,
                 lastDownload: localStorage.getItem('mx_last_download') || null,
+                feedback: {
+                    type: '',
+                    message: '',
+                },
 
                 init() {
                     window.addEventListener('online', () => this.isOnline = true);
@@ -178,20 +194,77 @@
                     this.hasPending = logs.length > 0;
                 },
 
+                pendingMessage() {
+                    if (!this.isOnline) {
+                        return this.hasPending
+                            ? `${this.pendingCount} offline scan(s) saved. Go online to sync them.`
+                            : 'Offline now. New valid scans will be saved on this device until you reconnect.';
+                    }
+
+                    return this.hasPending
+                        ? `${this.pendingCount} offline scan(s) waiting to sync.`
+                        : 'No pending offline scans to sync.';
+                },
+
+                setFeedback(type, message) {
+                    this.feedback = { type, message };
+                },
+
+                feedbackClass() {
+                    const classes = {
+                        success: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+                        error: 'border-red-200 bg-red-50 text-red-800',
+                        info: 'border-indigo-200 bg-indigo-50 text-indigo-800',
+                        warning: 'border-amber-200 bg-amber-50 text-amber-800',
+                    };
+
+                    return classes[this.feedback.type] || classes.info;
+                },
+
+                feedbackDotClass() {
+                    const classes = {
+                        success: 'bg-emerald-500',
+                        error: 'bg-red-500',
+                        info: 'bg-indigo-500',
+                        warning: 'bg-amber-500',
+                    };
+
+                    return classes[this.feedback.type] || classes.info;
+                },
+
+                async readErrorMessage(response, fallback) {
+                    try {
+                        const data = await response.json();
+                        if (data.message) return data.message;
+                        if (data.error) return data.error;
+                        if (Array.isArray(data.errors)) return data.errors.join('; ');
+                        if (data.errors) return Object.values(data.errors).flat().join('; ');
+                    } catch (error) {
+                        // Keep the user-facing fallback below if the server did not return JSON.
+                    }
+
+                    return fallback;
+                },
+
                 async downloadSchedule() {
                     if (!this.selectedExamId) {
-                        alert('Select a scheduled exam first.');
+                        this.setFeedback('warning', 'Select a scheduled exam first.');
                         return;
                     }
 
                     try {
                         this.isDownloading = true;
+                        this.setFeedback('info', 'Downloading selected schedule and offline validation key...');
                         const [scheduleResp, keyResp] = await Promise.all([
                             fetch(`/api/v1/offline/schedule/${this.selectedExamId}`, { headers: { 'Accept': 'application/json' } }),
                             fetch('/api/v1/offline/keys', { headers: { 'Accept': 'application/json' } }),
                         ]);
-                        if (!scheduleResp.ok) throw new Error("Failed to fetch schedule");
-                        if (!keyResp.ok) throw new Error("RSA public key is not configured on the server");
+                        if (!scheduleResp.ok) {
+                            throw new Error(await this.readErrorMessage(scheduleResp, 'Failed to fetch the selected schedule.'));
+                        }
+                        if (!keyResp.ok) {
+                            throw new Error(await this.readErrorMessage(keyResp, 'RSA public key is not configured on the server.'));
+                        }
 
                         const data = await scheduleResp.json();
                         const keyData = await keyResp.json();
@@ -205,9 +278,10 @@
                         localStorage.setItem('mx_offline_exam_label', this.downloadedExam);
                         this.lastDownload = new Date().toLocaleString();
                         localStorage.setItem('mx_last_download', this.lastDownload);
-                        alert(`Schedule downloaded successfully for ${this.downloadedExam}.`);
+                        const allocationCount = data.allocation_count || (data.allocations || []).length || 0;
+                        this.setFeedback('success', `Downloaded ${this.downloadedExam} with ${allocationCount} student(s). Offline scanning is ready for this exam.`);
                     } catch (err) {
-                        alert("Error downloading schedule: " + err.message);
+                        this.setFeedback('error', `Download failed: ${err.message}`);
                     } finally {
                         this.isDownloading = false;
                     }
@@ -215,9 +289,15 @@
 
                 async sync() {
                     const logs = JSON.parse(localStorage.getItem('mx_offline_logs') || '[]');
-                    if (logs.length === 0) return;
+                    if (logs.length === 0) {
+                        this.updatePending();
+                        this.setFeedback('info', 'There are no pending offline scans to sync.');
+                        return;
+                    }
 
                     try {
+                        this.isSyncing = true;
+                        this.setFeedback('info', `Syncing ${logs.length} pending offline scan(s)...`);
                         const resp = await fetch('/api/v1/offline/sync', {
                             method: 'POST',
                             headers: {
@@ -233,12 +313,22 @@
                         if (accepted.size > 0) {
                             localStorage.setItem('mx_offline_logs', JSON.stringify(logs.filter((_, index) => !accepted.has(index))));
                             window.dispatchEvent(new Event('mx-offline-logs-updated'));
+                            this.updatePending();
                         }
                         if (data.success) {
-                            alert(`Synced ${data.synced_count} records successfully!`);
-                        } else alert("Some records could not be synced: " + data.errors.join('; '));
+                            this.setFeedback('success', `Synced ${data.synced_count} attendance record(s) successfully.`);
+                        } else {
+                            const errors = data.errors || ['Some records could not be synced.'];
+                            const syncedCount = data.synced_count || accepted.size || 0;
+                            const prefix = syncedCount > 0
+                                ? `Synced ${syncedCount} record(s), but ${errors.length} failed`
+                                : 'Sync failed';
+                            this.setFeedback('error', `${prefix}: ${errors.join('; ')}`);
+                        }
                     } catch (err) {
-                        alert("Sync failed: " + err.message);
+                        this.setFeedback('error', `Sync failed: ${err.message}`);
+                    } finally {
+                        this.isSyncing = false;
                     }
                 }
             }
