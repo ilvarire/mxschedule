@@ -1,9 +1,10 @@
 <?php
 
 use App\Http\Controllers\Admin;
-use App\Http\Controllers\Student;
 use App\Http\Controllers\Api;
 use App\Http\Controllers\Auth\PasswordController;
+use App\Http\Controllers\Invigilator;
+use App\Http\Controllers\Student;
 use Illuminate\Support\Facades\Route;
 
 // ── Public ──────────────────────────────────────
