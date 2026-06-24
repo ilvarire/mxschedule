@@ -70,7 +70,7 @@ test('student download queues pdf generation when cached pdf is missing', functi
     Storage::fake('public');
     $fixture = studentExamPassFixture();
 
-    ExamPass::create([
+    $pass = ExamPass::create([
         'exam_allocation_id' => $fixture['allocation']->id,
         'pass_code' => 'pass-code',
         'qr_payload' => 'signed-payload',
@@ -84,6 +84,29 @@ test('student download queues pdf generation when cached pdf is missing', functi
         ->assertSessionHas('success');
 
     Queue::assertPushed(GenerateExamPassPdfJob::class);
+    expect($pass->refresh()->pdf_generation_requested_at)->not->toBeNull();
+});
+
+test('student repeat download click does not dispatch another pdf job while pending', function () {
+    Queue::fake();
+    Storage::fake('public');
+    $fixture = studentExamPassFixture();
+
+    ExamPass::create([
+        'exam_allocation_id' => $fixture['allocation']->id,
+        'pass_code' => 'pass-code',
+        'qr_payload' => 'signed-payload',
+        'pdf_generation_requested_at' => now(),
+        'expires_at' => now()->addWeek(),
+    ]);
+
+    $this
+        ->actingAs($fixture['user'])
+        ->get(route('student.exam-pass.download', $fixture['allocation']))
+        ->assertRedirect()
+        ->assertSessionHas('success');
+
+    Queue::assertNothingPushed();
 });
 
 test('student can download an existing cached exam pass pdf', function () {
@@ -92,7 +115,7 @@ test('student can download an existing cached exam pass pdf', function () {
     $fixture = studentExamPassFixture();
     Storage::disk('public')->put('exam-passes/v2_pass.pdf', 'PDF content');
 
-    ExamPass::create([
+    $pass = ExamPass::create([
         'exam_allocation_id' => $fixture['allocation']->id,
         'pass_code' => 'pass-code',
         'qr_payload' => 'signed-payload',
@@ -130,4 +153,5 @@ test('student download regenerates old cached exam pass pdf layout', function ()
         ->assertSessionHas('success');
 
     Queue::assertPushed(GenerateExamPassPdfJob::class);
+    expect($pass->refresh()->pdf_generation_requested_at)->not->toBeNull();
 });

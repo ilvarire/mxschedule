@@ -17,6 +17,9 @@
                     $session = $alloc->examSession;
                     $exam = $session->exam;
                     $isUpcoming = $session->start_time->isFuture();
+                    $pass = $alloc->examPass;
+                    $pdfReady = $pass?->isPdfReady() ?? false;
+                    $pdfPending = $pass?->isPdfGenerationPending() ?? false;
                 @endphp
                 <div class="card {{ $isUpcoming ? '' : 'opacity-60' }}">
                     <div class="card-body">
@@ -50,15 +53,31 @@
                         @if($isUpcoming)
                             <div class="mt-5 flex gap-2">
                                 <a href="{{ route('student.exam-pass.show', $alloc) }}" class="btn btn-primary flex-1">View Pass</a>
-                                <a href="{{ route('student.exam-pass.download', $alloc) }}" class="btn btn-secondary flex-1">
-                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                                    {{ $alloc->examPass?->pdf_path ? 'Download PDF' : 'Prepare PDF' }}
-                                </a>
+                                @if($pdfPending)
+                                    <button type="button" class="btn btn-secondary flex-1 opacity-75 cursor-not-allowed" disabled>
+                                        Preparing PDF...
+                                    </button>
+                                @else
+                                    <a href="{{ route('student.exam-pass.download', $alloc) }}" class="btn btn-secondary flex-1">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                        {{ $pdfReady ? 'Download PDF' : 'Prepare PDF' }}
+                                    </a>
+                                @endif
                             </div>
+                            @if($pdfPending)
+                                <p class="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                                    Your PDF is being prepared in the background. This page will refresh automatically.
+                                </p>
+                            @endif
                         @endif
                     </div>
                 </div>
             @endforeach
         </div>
+        @if($allocations->contains(fn ($alloc) => $alloc->examPass?->isPdfGenerationPending()))
+            <script>
+                window.setTimeout(() => window.location.reload(), 10000);
+            </script>
+        @endif
     @endif
 </x-layouts.app>

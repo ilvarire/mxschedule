@@ -116,6 +116,7 @@ class ExamPassService
             ->size(200)
             ->errorCorrection('H')
             ->generate($pass->qr_payload);
+        $qrCodeDataUri = 'data:image/svg+xml;base64,' . base64_encode((string) $qrCodeSvg);
 
         $pdf = Pdf::loadView('pdf.exam-pass', [
             'pass' => $pass,
@@ -127,7 +128,7 @@ class ExamPassService
             'course' => $allocation->examSession->exam->course,
             'system' => $allocation->system,
             'hall' => $allocation->hall,
-            'qrCodeSvg' => $qrCodeSvg,
+            'qrCodeDataUri' => $qrCodeDataUri,
         ]);
 
         // Quarter A4: 105mm × 148.5mm
@@ -138,7 +139,10 @@ class ExamPassService
         // Store via the Storage abstraction so cloud drivers (S3 etc.) work transparently.
         Storage::disk('public')->put($filename, $pdf->output());
 
-        $pass->update(['pdf_path' => $filename]);
+        $pass->update([
+            'pdf_path' => $filename,
+            'pdf_generation_requested_at' => null,
+        ]);
 
         return $filename;
     }

@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use App\Services\ExamPassService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class ExamPass extends Model
 {
@@ -16,6 +18,7 @@ class ExamPass extends Model
         'is_used',
         'used_at',
         'pdf_path',
+        'pdf_generation_requested_at',
         'expires_at',
     ];
 
@@ -24,6 +27,7 @@ class ExamPass extends Model
         return [
             'is_used' => 'boolean',
             'used_at' => 'datetime',
+            'pdf_generation_requested_at' => 'datetime',
             'expires_at' => 'datetime',
         ];
     }
@@ -31,6 +35,23 @@ class ExamPass extends Model
     public function allocation()
     {
         return $this->belongsTo(ExamAllocation::class, 'exam_allocation_id');
+    }
+
+    public function isPdfReady(): bool
+    {
+        return $this->pdf_path
+            && str_starts_with($this->pdf_path, 'exam-passes/' . ExamPassService::PDF_TEMPLATE_VERSION . '_')
+            && Storage::disk('public')->exists($this->pdf_path);
+    }
+
+    public function needsPdfPreparation(): bool
+    {
+        return ! $this->isPdfReady();
+    }
+
+    public function isPdfGenerationPending(): bool
+    {
+        return $this->pdf_generation_requested_at !== null && $this->needsPdfPreparation();
     }
 
     /**

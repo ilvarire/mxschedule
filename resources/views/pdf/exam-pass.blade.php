@@ -15,195 +15,163 @@
             box-sizing: border-box;
         }
 
-        html {
-            width: 105mm;
-            height: 148.5mm;
-            margin: 0;
-            padding: 0;
-        }
-
+        html,
         body {
             width: 105mm;
             height: 148.5mm;
             margin: 0;
-            padding: 5mm;
+            padding: 0;
             font-family: DejaVu Sans, Helvetica, Arial, sans-serif;
+            color: #000;
+        }
+
+        body {
+            padding: 6mm;
             font-size: 9px;
-            color: #1a1a1a;
             line-height: 1.25;
         }
 
-        .pass-container {
-            width: 95mm;
-            height: 138.5mm;
+        .pass {
+            width: 93mm;
+            height: 136.5mm;
+            border: 1.5px solid #000;
+            padding: 5mm;
             overflow: hidden;
-            border: 2px solid #1e3a5f;
-            border-radius: 6px;
-            padding: 3.5mm;
         }
 
-        .header {
+        .title {
             text-align: center;
-            border-bottom: 2px solid #1e3a5f;
-            padding-bottom: 2.5mm;
-            margin-bottom: 2.5mm;
+            border-bottom: 1px solid #000;
+            padding-bottom: 3mm;
+            margin-bottom: 4mm;
         }
 
-        .header h1 {
-            font-size: 14px;
-            color: #1e3a5f;
-            text-transform: uppercase;
+        .title h1 {
+            font-size: 15px;
             letter-spacing: 1px;
-        }
-
-        .header h2 {
-            font-size: 9px;
-            color: #555;
-            margin-top: 1mm;
-            line-height: 1.25;
-        }
-
-        .badge {
-            display: inline-block;
-            background: #1e3a5f;
-            color: #fff;
-            padding: 1.5mm 3mm;
-            border-radius: 3px;
-            font-size: 8px;
-            font-weight: bold;
-            margin-top: 1.5mm;
-        }
-
-        .detail-row {
-            width: 100%;
-            padding: 1.5mm 0;
-            border-bottom: 1px dotted #ccc;
-        }
-
-        .detail-label {
-            font-size: 7px;
-            color: #777;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 0.5mm;
+            margin-bottom: 1mm;
         }
 
-        .detail-value {
+        .title p {
+            font-size: 9px;
+        }
+
+        .row {
+            border-bottom: 1px solid #000;
+            padding: 2mm 0;
+        }
+
+        .label {
+            display: block;
+            font-size: 7px;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            margin-bottom: 0.75mm;
+        }
+
+        .value {
+            display: block;
             font-size: 10px;
             font-weight: bold;
-            color: #111;
             word-wrap: break-word;
-        }
-
-        .highlight {
-            background: #f0f7ff;
-            padding: 2mm;
-            border-radius: 4px;
-            margin: 2mm 0 1.5mm;
         }
 
         .seat-table {
             width: 100%;
             border-collapse: collapse;
+            margin-top: 3mm;
+            border: 1px solid #000;
         }
 
         .seat-table td {
             width: 50%;
+            padding: 2mm;
             vertical-align: top;
         }
 
-        .seat-table td:last-child {
-            text-align: right;
+        .seat-table td:first-child {
+            border-right: 1px solid #000;
         }
 
-        .highlight .detail-value {
-            color: #1e3a5f;
+        .seat-table .value {
             font-size: 13px;
         }
 
-        .qr-section {
+        .qr {
             text-align: center;
-            margin-top: 2mm;
-            padding-top: 2mm;
-            border-top: 2px solid #1e3a5f;
+            margin-top: 5mm;
         }
 
-        .qr-code {
-            width: 39mm;
-            height: 39mm;
+        .qr img {
+            width: 42mm;
+            height: 42mm;
+            display: block;
             margin: 0 auto;
         }
 
-        .qr-code svg {
-            width: 39mm;
-            height: 39mm;
-            display: block;
-        }
-
-        .qr-section p {
+        .qr p {
             font-size: 7px;
-            color: #999;
-            margin-top: 1.5mm;
+            margin-top: 2mm;
         }
 
         .footer {
             text-align: center;
             font-size: 7px;
-            color: #999;
-            margin-top: 1.5mm;
+            margin-top: 4mm;
+            border-top: 1px solid #000;
+            padding-top: 2mm;
         }
     </style>
 </head>
 <body>
-    <div class="pass-container">
-        <div class="header">
+    <div class="pass">
+        <div class="title">
             <h1>Exam Pass</h1>
-            <h2>{{ $course->code }} &mdash; {{ $course->title }}</h2>
-            <span class="badge">Session {{ $session->session_number }}</span>
+            <p>{{ $course->code }} - {{ $course->title }}</p>
+            <p>Session {{ $session->session_number }}</p>
         </div>
 
-        <div class="detail-row">
-            <div class="detail-label">Student Name</div>
-            <div class="detail-value">{{ $user->name }}</div>
+        <div class="row">
+            <span class="label">Student Name</span>
+            <span class="value">{{ $user->name }}</span>
         </div>
 
-        <div class="detail-row">
-            <div class="detail-label">Matric Number</div>
-            <div class="detail-value">{{ $student->matric_number }}</div>
+        <div class="row">
+            <span class="label">Matric Number</span>
+            <span class="value">{{ $student->matric_number }}</span>
         </div>
 
-        <div class="detail-row">
-            <div class="detail-label">Date</div>
-            <div class="detail-value">{{ $exam->exam_date->format('l, F j, Y') }}</div>
+        <div class="row">
+            <span class="label">Date</span>
+            <span class="value">{{ $exam->exam_date->format('l, F j, Y') }}</span>
         </div>
 
-        <div class="detail-row">
-            <div class="detail-label">Time</div>
-            <div class="detail-value">{{ $session->start_time->format('g:i A') }} &ndash; {{ $session->end_time->format('g:i A') }}</div>
+        <div class="row">
+            <span class="label">Time</span>
+            <span class="value">{{ $session->start_time->format('g:i A') }} - {{ $session->end_time->format('g:i A') }}</span>
         </div>
 
-        <div class="highlight">
-            <table class="seat-table">
-                <tr>
-                    <td>
-                        <div class="detail-label">Hall</div>
-                        <div class="detail-value">{{ $hall->name }}</div>
-                    </td>
-                    <td>
-                        <div class="detail-label">System</div>
-                        <div class="detail-value">{{ $system->system_code }}</div>
-                    </td>
-                </tr>
-            </table>
-        </div>
+        <table class="seat-table">
+            <tr>
+                <td>
+                    <span class="label">Hall</span>
+                    <span class="value">{{ $hall->name }}</span>
+                </td>
+                <td>
+                    <span class="label">System</span>
+                    <span class="value">{{ $system->system_code }}</span>
+                </td>
+            </tr>
+        </table>
 
-        <div class="qr-section">
-            <div class="qr-code">{!! $qrCodeSvg !!}</div>
-            <p>Scan this QR code at the exam hall entrance</p>
+        <div class="qr">
+            <img src="{{ $qrCodeDataUri }}" alt="Exam pass QR code">
+            <p>Scan this QR code at the exam hall entrance.</p>
         </div>
 
         <div class="footer">
-            Pass ID: {{ substr($pass->pass_code, 0, 12) }}... &bull; Generated {{ now()->format('M j, Y g:i A') }}
+            Pass ID: {{ substr($pass->pass_code, 0, 12) }} | Generated {{ now()->format('M j, Y g:i A') }}
         </div>
     </div>
 </body>

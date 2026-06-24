@@ -12,6 +12,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class GenerateExamPassPdfJob implements ShouldQueue
 {
@@ -52,6 +53,8 @@ class GenerateExamPassPdfJob implements ShouldQueue
 
     protected function shouldGeneratePdf(?string $path): bool
     {
-        return ! $path || ! str_starts_with($path, 'exam-passes/' . ExamPassService::PDF_TEMPLATE_VERSION . '_');
+        return ! $path
+            || ! str_starts_with($path, 'exam-passes/' . ExamPassService::PDF_TEMPLATE_VERSION . '_')
+            || ! Storage::disk('public')->exists($path);
     }
 }

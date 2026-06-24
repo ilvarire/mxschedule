@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Student;
 use App\Http\Controllers\Controller;
 use App\Jobs\GenerateExamPassPdfJob;
 use App\Models\ExamAllocation;
+use App\Models\ExamPass;
 use App\Services\ExamPassService;
 use Illuminate\Support\Facades\Storage;
 
@@ -48,7 +49,7 @@ class ExamPassController extends Controller
 
         if (! $pass) {
             $pass = $passService->generateForAllocation($allocation);
-            GenerateExamPassPdfJob::dispatch($allocation->examSession->exam);
+            $this->queuePdfGeneration($pass, $allocation);
 
             return back()->with('success', 'Your exam pass PDF is being prepared. Please try the download again in a minute.');
         }
@@ -57,8 +58,12 @@ class ExamPassController extends Controller
             return back()->with('error', 'Pass is not yet available.');
         }
 
-        if ($this->needsPreparedPdf($pass->pdf_path)) {
-            GenerateExamPassPdfJob::dispatch($allocation->examSession->exam);
+        if ($pass->isPdfGenerationPending()) {
+            return back()->with('success', 'Your exam pass PDF is still being prepared. Please check back shortly.');
+        }
+
+        if ($pass->needsPdfPreparation()) {
+            $this->queuePdfGeneration($pass, $allocation);
 
             return back()->with('success', 'Your exam pass PDF is being prepared. Please try the download again in a minute.');
         }
@@ -76,10 +81,10 @@ class ExamPassController extends Controller
         return 'exam-pass-' . trim($matric, '-') . '.pdf';
     }
 
-    protected function needsPreparedPdf(?string $path): bool
+    protected function queuePdfGeneration(ExamPass $pass, ExamAllocation $allocation): void
     {
-        return ! $path
-            || ! str_starts_with($path, 'exam-passes/' . ExamPassService::PDF_TEMPLATE_VERSION . '_')
-            || ! Storage::disk('public')->exists($path);
+        $pass->forceFill(['pdf_generation_requested_at' => now()])->save();
+
+        GenerateExamPassPdfJob::dispatch($allocation->examSession->exam);
     }
 }
