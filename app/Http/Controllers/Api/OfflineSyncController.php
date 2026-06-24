@@ -52,7 +52,9 @@ class OfflineSyncController extends Controller
         $publicKeyPath = storage_path('app/keys/exam_public.pem');
 
         if (! file_exists($publicKeyPath)) {
-            return response()->json(['error' => 'RSA public key not found. Offline validation is unavailable.'], 404);
+            return response()->json([
+                'error' => 'RSA public key not found. Run php artisan exam:generate-keys on the server, then regenerate any exam passes that were created before the keys existed.',
+            ], 404);
         }
 
         return response()->json(['public_key' => file_get_contents($publicKeyPath)]);
