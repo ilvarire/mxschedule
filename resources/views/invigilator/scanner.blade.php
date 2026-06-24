@@ -93,8 +93,22 @@
                     </div>
 
                     <div x-show="downloadedExam" class="mt-3 rounded-lg bg-gray-50 p-3 text-xs text-gray-600">
-                        Offline schedule loaded:
+                        Last offline schedule loaded:
                         <span class="font-semibold text-gray-900" x-text="downloadedExam"></span>
+                    </div>
+                    <div x-show="downloadedSchedules.length > 0" class="mt-3 rounded-lg border border-gray-100 bg-white p-3">
+                        <div class="flex items-center justify-between">
+                            <p class="text-xs font-semibold text-gray-900">Downloaded schedules</p>
+                            <span class="text-[10px] text-gray-400" x-text="downloadedSchedules.length + ' saved'"></span>
+                        </div>
+                        <div class="mt-2 space-y-1">
+                            <template x-for="schedule in downloadedSchedules" :key="schedule.exam_id">
+                                <div class="flex items-center justify-between rounded bg-gray-50 px-2 py-1.5 text-[11px] text-gray-600">
+                                    <span class="font-medium text-gray-800" x-text="schedule.exam_label || schedule.course || ('Exam #' + schedule.exam_id)"></span>
+                                    <span x-text="(schedule.allocation_count || (schedule.allocations || []).length || 0) + ' student(s)'"></span>
+                                </div>
+                            </template>
+                        </div>
                     </div>
                     <div x-show="lastDownload" class="mt-2 text-[10px] text-gray-400">
                         Last download: <span x-text="lastDownload"></span>
@@ -125,6 +139,7 @@
                 pendingCount: 0,
                 selectedExamId: localStorage.getItem('mx_offline_exam_id') || '',
                 downloadedExam: localStorage.getItem('mx_offline_exam_label') || null,
+                downloadedSchedules: [],
                 isDownloading: false,
                 lastDownload: localStorage.getItem('mx_last_download') || null,
 
@@ -132,7 +147,29 @@
                     window.addEventListener('online', () => this.isOnline = true);
                     window.addEventListener('offline', () => this.isOnline = false);
                     window.addEventListener('mx-offline-logs-updated', () => this.updatePending());
+                    this.loadDownloadedSchedules();
                     this.updatePending();
+                },
+
+                getOfflineSchedules() {
+                    const schedules = JSON.parse(localStorage.getItem('mx_offline_schedules') || '{}');
+                    const legacySchedule = JSON.parse(localStorage.getItem('mx_offline_schedule') || 'null');
+                    if (legacySchedule && legacySchedule.exam_id && !schedules[String(legacySchedule.exam_id)]) {
+                        schedules[String(legacySchedule.exam_id)] = legacySchedule;
+                        localStorage.setItem('mx_offline_schedules', JSON.stringify(schedules));
+                    }
+                    return schedules;
+                },
+
+                saveOfflineSchedules(schedules) {
+                    localStorage.setItem('mx_offline_schedules', JSON.stringify(schedules));
+                    this.loadDownloadedSchedules();
+                },
+
+                loadDownloadedSchedules() {
+                    const schedules = this.getOfflineSchedules();
+                    this.downloadedSchedules = Object.values(schedules)
+                        .sort((a, b) => (b.generated_at || 0) - (a.generated_at || 0));
                 },
 
                 updatePending() {
@@ -158,7 +195,9 @@
 
                         const data = await scheduleResp.json();
                         const keyData = await keyResp.json();
-                        localStorage.setItem('mx_offline_schedule', JSON.stringify(data));
+                        const schedules = this.getOfflineSchedules();
+                        schedules[String(data.exam_id)] = data;
+                        this.saveOfflineSchedules(schedules);
                         localStorage.setItem('mx_offline_public_key', keyData.public_key);
                         localStorage.setItem('mx_offline_exam_id', String(data.exam_id));
                         this.selectedExamId = String(data.exam_id);
@@ -294,10 +333,11 @@
             async function validateOffline(payload) {
                 try {
                     const qrData = await verifyOfflineJwt(payload);
-                    const schedule = JSON.parse(localStorage.getItem('mx_offline_schedule') || '{}');
-                    const allocation = (schedule.allocations || []).find(a => a.aid == qrData.aid);
+                    const match = findOfflineAllocation(qrData);
+                    const schedule = match.schedule;
+                    const allocation = match.allocation;
 
-                    if (!allocation) throw new Error('Student not found in downloaded schedule');
+                    if (!allocation) throw new Error('Student not found in any downloaded offline schedule');
 
                     const now = Math.floor(Date.now() / 1000);
                     const windowSeconds = (schedule.entry_window || 15) * 60;
@@ -358,6 +398,28 @@
                     if (data[field] === undefined) throw new Error('Signed pass is missing required claims');
                 }
                 return data;
+            }
+
+            function getOfflineSchedules() {
+                const schedules = JSON.parse(localStorage.getItem('mx_offline_schedules') || '{}');
+                const legacySchedule = JSON.parse(localStorage.getItem('mx_offline_schedule') || 'null');
+                if (legacySchedule && legacySchedule.exam_id && !schedules[String(legacySchedule.exam_id)]) {
+                    schedules[String(legacySchedule.exam_id)] = legacySchedule;
+                    localStorage.setItem('mx_offline_schedules', JSON.stringify(schedules));
+                }
+                return schedules;
+            }
+
+            function findOfflineAllocation(qrData) {
+                const schedules = getOfflineSchedules();
+                for (const schedule of Object.values(schedules)) {
+                    const allocation = (schedule.allocations || []).find(item => item.aid == qrData.aid);
+                    if (allocation) {
+                        return { schedule, allocation };
+                    }
+                }
+
+                return { schedule: {}, allocation: null };
             }
 
             function pemToBytes(pem) {

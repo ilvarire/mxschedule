@@ -45,6 +45,7 @@ test('invigilator scanner shows scheduled exams for offline download', function 
         ->get(route('invigilator.scanner'))
         ->assertOk()
         ->assertSee('Select a scheduled exam')
+        ->assertSee('Downloaded schedules')
         ->assertSee('CSE301 - Data Structures')
         ->assertSee('12 student(s)');
 });

@@ -40,6 +40,7 @@ class OfflineSyncController extends Controller
             'exam_label' => "{$exam->course->code} - {$exam->course->title}",
             'exam_date' => $exam->exam_date->toDateString(),
             'session_count' => $exam->sessions->count(),
+            'allocation_count' => $allocations->count(),
             'generated_at' => now()->timestamp,
             'allocations' => $allocations,
             'entry_window' => (int) Setting::getValue('entry_window_minutes', 15),
