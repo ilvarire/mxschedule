@@ -10,7 +10,7 @@
                 <!-- Scanner Area -->
                 <div id="scanner-container" class="relative">
                     <div id="camera-view" class="w-full aspect-square rounded-lg bg-gray-900 overflow-hidden relative">
-                        <video id="scanner-video" class="w-full h-full object-cover" playsinline></video>
+                        <div id="scanner-reader" class="w-full h-full"></div>
                         <!-- Scanner overlay -->
                         <div class="absolute inset-0 flex items-center justify-center">
                             <div class="w-56 h-56 border-2 border-white/50 rounded-2xl relative">
@@ -34,9 +34,10 @@
                 <div class="mt-6 pt-6 border-t border-gray-100">
                     <p class="text-sm text-gray-500 mb-3">Or enter QR data manually:</p>
                     <div class="flex flex-col gap-2 sm:flex-row">
-                        <input type="text" id="manual-qr-input" class="form-input-styled flex-1" placeholder="Paste QR payload…">
+                        <input type="text" id="manual-qr-input" class="form-input-styled flex-1" placeholder="Paste QR payload, pass ID, or pass code...">
                         <button id="manual-validate-btn" class="btn btn-primary">Validate</button>
                     </div>
+                    <p class="mt-2 text-xs text-gray-500">Manual pass ID/code lookup requires internet. Offline manual validation requires the full QR payload.</p>
                 </div>
 
                 <!-- Result Display -->
@@ -342,18 +343,23 @@
             const manualBtn = document.getElementById('manual-validate-btn');
             const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
             let html5QrCode;
+            let isValidating = false;
+            let lastDecodedText = '';
+            let lastDecodedAt = 0;
 
             // Camera Scanner logic
             const startBtn = document.getElementById('start-scanner');
             startBtn.addEventListener('click', async () => {
                 if (html5QrCode && html5QrCode.isScanning) {
                     await html5QrCode.stop();
+                    html5QrCode.clear();
+                    html5QrCode = null;
                     startBtn.innerHTML = '<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg> Start Camera';
                     return;
                 }
 
                 if (!html5QrCode) {
-                    html5QrCode = new Html5Qrcode("scanner-video");
+                    html5QrCode = new Html5Qrcode("scanner-reader");
                 }
 
                 try {
@@ -367,6 +373,13 @@
                             qrbox: { width: 250, height: 250 }
                         },
                         (decodedText) => {
+                            const now = Date.now();
+                            if (isValidating || (decodedText === lastDecodedText && now - lastDecodedAt < 2500)) {
+                                return;
+                            }
+
+                            lastDecodedText = decodedText;
+                            lastDecodedAt = now;
                             validateQr(decodedText);
                             // Optional: vibrate or play sound on success
                             if (navigator.vibrate) navigator.vibrate(100);
@@ -375,6 +388,8 @@
                             // parse error, ignore
                         }
                     );
+
+                    styleScannerVideo();
                     
                     startBtn.disabled = false;
                     startBtn.innerHTML = '<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg> Stop Camera';
@@ -396,11 +411,23 @@
                 resultContent.innerHTML = '<div class="text-center py-4"><p class="text-gray-500">Validating…</p></div>';
 
                 if (!navigator.onLine) {
+                    if (!looksLikeJwt(payload)) {
+                        const data = {
+                            valid: false,
+                            result_label: 'Offline Lookup Unavailable',
+                            message: 'Pass ID/code lookup needs internet. To validate manually while offline, paste the full QR payload.',
+                        };
+                        showResult(data);
+                        addToHistory(data);
+                        return;
+                    }
+
                     validateOffline(payload);
                     return;
                 }
 
                 try {
+                    isValidating = true;
                     const resp = await fetch('{{ route("api.validate-qr") }}', {
                         method: 'POST',
                         headers: {
@@ -416,8 +443,35 @@
                     addToHistory(data);
                 } catch (err) {
                     // Fallback to offline if network fails during request
-                    validateOffline(payload);
+                    if (looksLikeJwt(payload)) {
+                        validateOffline(payload);
+                    } else {
+                        const data = {
+                            valid: false,
+                            result_label: 'Connection Error',
+                            message: 'Could not reach the server to look up this pass ID/code. Paste the full QR payload for offline validation.',
+                        };
+                        showResult(data);
+                        addToHistory(data);
+                    }
+                } finally {
+                    isValidating = false;
                 }
+            }
+
+            function looksLikeJwt(value) {
+                return String(value).split('.').length === 3;
+            }
+
+            function styleScannerVideo() {
+                requestAnimationFrame(() => {
+                    const reader = document.getElementById('scanner-reader');
+                    const video = reader?.querySelector('video');
+                    if (!video) return;
+
+                    video.classList.add('w-full', 'h-full', 'object-cover');
+                    video.setAttribute('playsinline', 'true');
+                });
             }
 
             async function validateOffline(payload) {
